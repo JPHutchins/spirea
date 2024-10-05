@@ -7,10 +7,10 @@
 #   all-features: false
 #   with-sources: false
 #   generate-hashes: false
-#   universal: false
+#   universal: true
 
 -e file:.
-colorama==0.4.6
+colorama==0.4.6 ; sys_platform == 'win32'
 iniconfig==2.0.0
 mypy==1.11.2
 mypy-extensions==1.0.0
