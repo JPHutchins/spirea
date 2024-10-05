@@ -10,6 +10,8 @@ from typing import (
     Literal,
     overload,
     override,
+    Protocol as TypingProtocol,
+    runtime_checkable,
 )
 from enum import IntEnum
 
@@ -38,7 +40,40 @@ class HSMStatus(IntEnum):
     """The root node of the state tree was reached"""
 
 
-class Node(Protocol[TEvent]):
+class StateMeta(type):
+    def __new__(cls, name, bases, dct):
+        dct["substates"] = []
+        dct["superstate"] = None
+        dct["__hsm_node"] = True
+        new_cls = super().__new__(cls, name, bases, dct)
+
+        for base in bases:
+            if isinstance(base, StateMeta):
+                print(base, base.superstate, new_cls)
+                new_cls.superstate = base
+
+                # the impl can use this to update referencees to its base with
+                # updates to itself.  Use the substates for this
+                print(base.__subclasses__())
+
+                for substate in base.substates:
+                    print(substate, substate.superstate, new_cls)
+                    base.superstate = new_cls.superstate
+                    # new_cls.substates.append(substate)
+
+        for _, attr_value in dct.items():
+            if hasattr(attr_value, "__hsm_node") is True:
+                new_cls.substates.append(attr_value)
+                attr_value.superstate = new_cls
+
+        return new_cls
+
+
+class CombinedMeta(type(TypingProtocol), StateMeta):
+    pass
+
+
+class Node(Protocol[TEvent], metaclass=CombinedMeta):
     __slots__ = ()
 
     @classmethod
@@ -80,75 +115,12 @@ class Root(Node):
         pass
 
 
-def _get_substates(
-    node: Type[Node], state_impls: tuple[Type[Node], ...]
-) -> tuple[Type[Node], ...]:
-    state_names = tuple(
-        name.replace("State", "") for name in dir(node) if name.startswith("State")
-    )
-
-    return tuple(impl for impl in state_impls if impl.__name__ in state_names)
-
-
-def hsm_init(
-    initial_state: Type[Node], state_impls: tuple[Type[Node], ...]
-) -> Type[Node]:
-    """Walk the state tree from the initial state to every leaf in order to
-    initialize the superstate class variables."""
-
-    if initial_state.superstate is not Root:
-        raise ValueError("The initial state must have Root as superstate!")
-
-    def walk_tree(node: Type[Node], superstate: Type[Node]) -> None:
-        node.substates = _get_substates(node, state_impls)
-        for substate in node.substates:
-            walk_tree(substate, node)
-
-        node.superstate = superstate
-
-    walk_tree(initial_state, Root)
-
-    return initial_state
-
-
-def generate_mermaid(node: Type[Node]) -> str:
-    """Generate a Mermaid diagram representation of the state hierarchy."""
-    mermaid_lines = ["stateDiagram-v2"]
-
-    # Dictionary to hold states and their substates for later reference
-    state_definitions = {}
-
-    def collect_states(node: Type[Node]):
-        """Recursively collect state and substate names."""
-        state_definitions[node.__name__] = []
-        for substate in node.substates:
-            state_definitions[node.__name__].append(substate)
-            collect_states(substate)
-
-    collect_states(node)  # Collect all states
-
-    # Generate state definitions for Mermaid
-    for state_name in state_definitions.keys():
-        mermaid_lines.append(f"state {state_name} {{")
-        mermaid_lines.append(f"    [*] --> [*]")  # Entry point for each state
-        mermaid_lines.append(f"}}")  # Closing the state
-
-    # Generate transitions
-    mermaid_lines.append(f"[*] --> {node.__name__}")  # Starting point
-    for state_name, substates in state_definitions.items():
-        for substate in substates:
-            mermaid_lines.append(f"{state_name} --> {substate.__name__}")
-
-    # Ensure end transitions are correctly defined
-    for state_name in state_definitions.keys():
-        mermaid_lines.append(f"{state_name} --> [*]")  # End transition for each state
-
-    return "\n".join(mermaid_lines)
-
-
 def hsm_get_path_to_root(node: Type[Node]) -> tuple[Type[Node], ...]:
     path: Final[list[Type[Node]]] = [node]
-    while node.superstate is not Root:
+    print(node)
+    print(node.superstate)
+    while node.superstate is not None:
+        print(node)
         node = node.superstate
         path.append(node)
 
@@ -255,6 +227,14 @@ class StateA(Node, Protocol):
             def run(cls, event_id: IntEnum) -> HSMStatus: ...
 
 
+# assert StateA.superstate is None
+assert StateA.StateB.superstate is StateA
+assert StateA.StateC.superstate is StateA
+assert StateA.StateC.StateD.superstate is StateA.StateC
+
+assert StateA.substates == [StateA.StateB, StateA.StateC]
+
+
 class A(StateA):
     __slots__ = ()
 
@@ -286,7 +266,11 @@ class A(StateA):
         logger.info("A.exit")
 
 
-class B(A.StateB):
+# assert A.superstate is None
+# assert A.substates == [A.StateB, A.StateC], A.substates
+
+
+class B(StateA.StateB):
     __slots__ = ()
 
     @classmethod
@@ -302,7 +286,10 @@ class B(A.StateB):
         logger.info("B.exit")
 
 
-class C(A.StateC):
+assert B.superstate is A
+
+
+class C(StateA.StateC):
     @classmethod
     def entry(cls) -> None:
         logger.info("C.entry")
@@ -318,7 +305,7 @@ class C(A.StateC):
         logger.info("C.exit")
 
 
-class D(C.StateD):
+class D(StateA.StateC.StateD):
     @classmethod
     def entry(cls) -> None:
         logger.info("D.entry")

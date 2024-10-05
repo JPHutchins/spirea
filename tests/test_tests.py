@@ -4,11 +4,9 @@ from hsm import (
     B,
     C,
     D,
-    hsm_init,
     hsm_get_lca,
     hsm_get_path_to_root,
     Event,
-    generate_mermaid,
 )
 
 
@@ -25,7 +23,7 @@ def run(node: Node, event: int) -> Node:
 
 
 def test_init() -> None:
-    hsm_init(A, (A, B, C, D))
+    # hsm_init(A, (A, B, C, D))
 
     print(A.run.__annotations__["event_id"].__args__)
 
