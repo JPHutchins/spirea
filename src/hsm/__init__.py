@@ -10,140 +10,148 @@ from typing import (
     Literal,
     overload,
     override,
-    Protocol as TypingProtocol,
+    Protocol,
     runtime_checkable,
+    cast,
+    TypeGuard,
+    Any,
+    _ProtocolMeta,
+    reveal_type,
+    Generic,
+    assert_never,
 )
 from enum import IntEnum
 
 
 logger: Final = logging.getLogger(__name__)
 
-TEvent = TypeVar("TEvent", bound=IntEnum, contravariant=True)
+TEvent = TypeVar("TEvent", bound=IntEnum)
+TState = TypeVar("TState")
 
 
 class HSMStatus(IntEnum):
     NO_TRANSITION = -2_147_483_648
     SELF_TRANSITION = -2_147_483_647
     EVENT_UNHANDLED = -2_147_483_646
-    """No run actions were taken"""
-    EVENT_ERROR_UNKNOWN_EVENT = -2_147_483_645
-    """The event ID was not recognized"""
-    ERROR_TRANSITION_NO_LCA = -2_147_483_644
-    """No least common ancestor was found"""
-    ERROR_TRANSITION_ENTRY_IS_NULL = -2_147_483_643
-    """The entry action is NULL"""
-    ERROR_TRANSITION_RUN_IS_NULL = -2_147_483_642
-    """The run action is NULL"""
-    ERROR_TRANSITION_EXIT_IS_NULL = -2_147_483_641
-    """The exit action is NULL"""
-    PARENT_OF_ROOT_NODE = -2_147_483_640
-    """The root node of the state tree was reached"""
+
+
+def _is_hsm_node(cls: Any) -> TypeGuard[Type["Node[TEvent, TState]"]]:
+    return getattr(cls, "__hsm_node", False)
 
 
 class StateMeta(type):
-    def __new__(cls, name, bases, dct):
-        dct["substates"] = []
-        dct["superstate"] = None
+    def __new__(
+        cls: Type["StateMeta"],
+        name: str,
+        bases: tuple[type, ...],
+        dct: dict[str, Any],
+    ) -> Type["Node[TEvent, TState]"]:
+        # Initialize substates and superstate attributes
+        dct["_substates"] = ()
+        dct["_superstate"] = None
         dct["__hsm_node"] = True
-        new_cls = super().__new__(cls, name, bases, dct)
 
-        for base in bases:
-            if isinstance(base, StateMeta):
-                print(base, base.superstate, new_cls)
-                new_cls.superstate = base
+        # Create new class with the updated dictionary
+        node_cls = cast(
+            Type["Node[TEvent, TState]"], super().__new__(cls, name, bases, dct)
+        )
 
-                # the impl can use this to update referencees to its base with
-                # updates to itself.  Use the substates for this
-                print(base.__subclasses__())
+        substates: Final[list[Type["Node[TEvent, TState]"]]] = []
+        for attr_value in dct.values():
+            if _is_hsm_node(attr_value):
+                substates.append(attr_value)
+                attr_value._superstate = node_cls  # type: ignore
 
-                for substate in base.substates:
-                    print(substate, substate.superstate, new_cls)
-                    base.superstate = new_cls.superstate
-                    # new_cls.substates.append(substate)
+        node_cls._substates = tuple(substates)
 
-        for _, attr_value in dct.items():
-            if hasattr(attr_value, "__hsm_node") is True:
-                new_cls.substates.append(attr_value)
-                attr_value.superstate = new_cls
-
-        return new_cls
+        return node_cls
 
 
-class CombinedMeta(type(TypingProtocol), StateMeta):
+class CombinedMeta(StateMeta, _ProtocolMeta):
     pass
 
 
-class Node(Protocol[TEvent], metaclass=CombinedMeta):
-    __slots__ = ()
+class Node(Protocol[TEvent, TState], metaclass=CombinedMeta):
+    @classmethod
+    def entry(cls, state: TState | None = None) -> Type["Node[TEvent, TState]"]: ...
 
     @classmethod
-    def entry(cls) -> Type["Node"]: ...
+    def run(
+        cls, event: TEvent, state: TState | None = None
+    ) -> Type["Node[TEvent, TState]"] | HSMStatus: ...
 
     @classmethod
-    def run(cls, event_id: TEvent) -> Type["Node"] | HSMStatus: ...
+    def exit(cls, state: TState | None = None) -> None: ...
 
     @classmethod
     def run_events(cls) -> tuple[IntEnum, ...]:
-        return cls.run.__annotations__["event_id"].__args__
+        handled_events: Final = cls.run.__annotations__["event"].__args__
+        if isinstance(handled_events, tuple):
+            return handled_events
+        raise ValueError(f"Invalid event type: {handled_events}")
 
-    @classmethod
-    def exit(cls) -> None: ...
-
-    superstate: Type["Node"]
-
-    substates: tuple[Type["Node"], ...]
-
-
-class Root(Node):
-    __slots__ = ()
-
-    @classmethod
-    def entry(cls) -> Type[Node]:
-        return Root
-
-    @classmethod
-    def run(cls, event_id: IntEnum) -> Type[Node] | HSMStatus:
-        return Root
-
-    @classmethod
-    def exit(cls) -> None: ...
-
-    superstate = Type["Root"]
-    substates = ()
-
-    class Event(IntEnum):
-        pass
+    _superstate: Type["Node[TEvent, TState]"]
+    _substates: tuple[Type["Node[TEvent, TState]"], ...]
 
 
-def hsm_get_path_to_root(node: Type[Node]) -> tuple[Type[Node], ...]:
-    path: Final[list[Type[Node]]] = [node]
-    print(node)
-    print(node.superstate)
-    while node.superstate is not None:
-        print(node)
-        node = node.superstate
+def hsm_get_path_to_root(
+    node: Type[Node[TEvent, TState]],
+) -> tuple[Type[Node[TEvent, TState]], ...]:
+    path: Final[list[Type[Node[TEvent, TState]]]] = [node]
+
+    while node is not None:
+        node = node._superstate
         path.append(node)
 
     return tuple(path)
 
 
 def hsm_get_lca(
-    path1: tuple[Type[Node], ...], path2: tuple[Type[Node], ...]
-) -> Type[Node]:
+    path1: tuple[Type[Node[TEvent, TState]], ...],
+    path2: tuple[Type[Node[TEvent, TState]], ...],
+) -> Type[Node[TEvent, TState]] | None:
+    print(f"Path1: {path1}")
+    print(f"Path2: {path2}")
     for node in path1:
         if node in path2:
             return node
 
-    return Root
+    return None
 
 
-def hsm_handle_event(current_state: Type[Node], event_id: TEvent) -> Type[Node]:
+def hsm_handle_entries(
+    node: Type[Node[TEvent, TState]],
+    state: TState | None = None,
+    prev: Type[Node[TEvent, TState]] | None = None,
+) -> Type[Node[TEvent, TState]]:
+    """Do the entries for the given node and all transitions that its entry causes.
+
+    Args:
+        node (Type[Node]): The node to start the entries from.
+        state (TState): The state to pass to the entry functions.
+        prev (Type[Node], optional): The previous node. Defaults to None.
+
+    Returns:
+        Type[Node]: The node after all entries have been done
+    """
+
+    while node != prev:
+        prev = node
+        node = node.entry(state)
+    return node
+
+
+def hsm_handle_event(
+    node_path: tuple[Type[Node[TEvent, TState]], ...],
+    event: TEvent,
+    state: TState | None = None,
+) -> Type[Node[TEvent, TState]]:
     """
     Handle an event for the hierarchical state machine.
 
     Args:
-        current_state (Type[Node]): The current state of the HSM.
-        event_id (TEvent): The event to handle.
+        node (Type[Node]): The current state of the HSM.
+        event (TEvent): The event to handle.
 
     Returns:
         Type[Node]: The new state after handling the event.
@@ -151,170 +159,79 @@ def hsm_handle_event(current_state: Type[Node], event_id: TEvent) -> Type[Node]:
     Raises:
         ValueError: If an unknown event is encountered.
     """
-    # Log the current state and event
-    logger.info(f"Handling event {event_id} in state {current_state.__name__}")
+    node, *_ = node_path
 
-    # Call the entry action of the current state if it's the first event
-    if current_state is not None:
-        current_state.entry()
+    # Log the current state and event
+    logger.debug(f"Handling event {event} in state {node.__name__}")
+    print(f"Handling event {event.name} in state {node.__name__}")
 
     # Handle the event in the current state
-    new_state_or_status = current_state.run(event_id)
+    new_state_or_status = (
+        node.run(event, state)
+        if event in node.run_events()
+        else HSMStatus.EVENT_UNHANDLED
+    )
+
+    print(new_state_or_status)
 
     # Check the returned value
     if isinstance(new_state_or_status, HSMStatus):
-        if new_state_or_status == HSMStatus.EVENT_ERROR_UNKNOWN_EVENT:
-            logger.error(f"Unknown event {event_id} in state {current_state.__name__}")
-            raise ValueError(
-                f"Unknown event {event_id} in state {current_state.__name__}"
-            )
+        if new_state_or_status == HSMStatus.NO_TRANSITION:
+            logger.debug(f"No transition in state {node.__name__}")
+            return node_path[-1]
+        elif new_state_or_status == HSMStatus.SELF_TRANSITION:
+            print(f"Doing self-transition for {node.__name__}")
+            logger.debug(f"Self-transition in state {node.__name__}")
+            for _node in reversed(node_path):
+                _node.exit(state)
+            return hsm_handle_entries(node, state)
+        elif new_state_or_status == HSMStatus.EVENT_UNHANDLED:
+            logger.debug(f"Unhandled event {event} in state {node.__name__}")
+            if node._superstate is None:
+                logger.debug(f"Reached root state {node.__name__}")
+                return node_path[-1]
+        else:
+            assert_never(new_state_or_status)
 
-        # Handle other HSMStatus values as needed
-        return current_state  # No state change, return current state
+    # if the new state is a node, then we can get the LCA
+    if _is_hsm_node(new_state_or_status):
+        path_to_root = hsm_get_path_to_root(node)
+        next_node_path_to_root = hsm_get_path_to_root(new_state_or_status)
+        lca = hsm_get_lca(next_node_path_to_root, path_to_root)
 
-    # If the return type is a new state, exit the current state and enter the new state
-    if new_state_or_status != current_state:
-        current_state.exit()  # Exit the current state
-        new_state_or_status.entry()  # Enter the new state
+        print(f"LCA: {lca}")
 
-    return new_state_or_status
+        node = node_path[-1]
+        while node != lca:
+            print(f"doing exit for {node.__name__}")
+            node.exit(state)
+            node = node._superstate
 
+        # do the entries from LCA to the new state
+        entry_path = tuple(reversed(next_node_path_to_root))
+        print(f"Entry path: {entry_path}")
 
-class Event(IntEnum):
-    ONE = 1
-    TWO = 2
-    THREE = 3
-    FOUR = 4
+        # start the entry path past the LCA
+        entry_path = entry_path[entry_path.index(lca) + 1 :]
 
+        print(f"Entry path: {entry_path}")
 
-class StateA(Node, Protocol):
-    __slots__ = ()
+        if len(entry_path) == 0:
+            # There are not entries to do, we exited to a super state
+            return node
 
-    superstate: Type["Node"] = Root
+        next = entry_path[0] if entry_path else None
+        for node in entry_path:
+            if node != next:
+                logger.warning(
+                    "The entry return disagrees with the path -"
+                    f"Entry of {node.__name__} returned {next.__name__} but expected {node.__name__}"
+                    f"Path is {entry_path}"
+                )
+                # raise ValueError("The entry return disagrees with the path")
+            next = node.entry(state)
 
-    @overload
-    @classmethod
-    def run(cls, event_id: Literal[Event.ONE]) -> Type["StateA.StateB"]: ...
+        return hsm_handle_entries(next, state, entry_path[-1] if entry_path else None)
 
-    @overload
-    @classmethod
-    def run(cls, event_id: Literal[Event.TWO]) -> Type["StateA.StateC"]: ...
-
-    @overload
-    @classmethod
-    def run(
-        cls, event_id: Literal[Event.ONE, Event.TWO]
-    ) -> Union[Type["StateA.StateB"], Type["StateA.StateC"]]: ...
-
-    class StateB(Node, Protocol):
-        __slots__ = ()
-
-        @classmethod
-        def run(
-            cls, event_id: Literal[Event.THREE, Event.FOUR]
-        ) -> Type["StateA.StateC"]: ...
-
-    class StateC(Node, Protocol):
-        __slots__ = ()
-
-        @classmethod
-        def run(
-            cls, event_id: IntEnum
-        ) -> Type["StateA.StateC.StateD"] | Type["StateA.StateB"]: ...
-
-        class StateD(Node, Protocol):
-            @classmethod
-            def run(cls, event_id: IntEnum) -> HSMStatus: ...
-
-
-# assert StateA.superstate is None
-assert StateA.StateB.superstate is StateA
-assert StateA.StateC.superstate is StateA
-assert StateA.StateC.StateD.superstate is StateA.StateC
-
-assert StateA.substates == [StateA.StateB, StateA.StateC]
-
-
-class A(StateA):
-    __slots__ = ()
-
-    @classmethod
-    def entry(cls) -> Type["A"]:
-        logger.info("A.entry")
-        return A
-
-    @overload
-    @classmethod
-    def run(cls, event_id: Literal[Event.ONE]) -> Type["B"]: ...
-
-    @overload
-    @classmethod
-    def run(cls, event_id: Literal[Event.TWO]) -> Type["C"]: ...
-
-    @classmethod
-    def run(
-        cls, event_id: Literal[Event.ONE, Event.TWO]
-    ) -> Union[Type["StateA.StateB"], Type["StateA.StateC"]]:
-        if event_id == Event.ONE:
-            return A
-        elif event_id == Event.TWO:
-            return C
-        raise ValueError(f"Invalid event_id: {event_id}")
-
-    @classmethod
-    def exit(cls) -> None:
-        logger.info("A.exit")
-
-
-# assert A.superstate is None
-# assert A.substates == [A.StateB, A.StateC], A.substates
-
-
-class B(StateA.StateB):
-    __slots__ = ()
-
-    @classmethod
-    def entry(cls) -> None:
-        logger.info("B.entry")
-
-    @classmethod
-    def run(cls, event_id: IntEnum) -> Type["C"]:
-        return C
-
-    @classmethod
-    def exit(cls) -> None:
-        logger.info("B.exit")
-
-
-assert B.superstate is A
-
-
-class C(StateA.StateC):
-    @classmethod
-    def entry(cls) -> None:
-        logger.info("C.entry")
-
-    @classmethod
-    def run(cls, event_id: IntEnum) -> Type[B] | Type["D"]:
-        if event_id == 0:
-            return B
-        return D
-
-    @classmethod
-    def exit(cls) -> None:
-        logger.info("C.exit")
-
-
-class D(StateA.StateC.StateD):
-    @classmethod
-    def entry(cls) -> None:
-        logger.info("D.entry")
-
-    @classmethod
-    def run(cls, event_id: IntEnum) -> None:
-        logger.info("D.run")
-        return None
-
-    @classmethod
-    def exit(cls) -> None:
-        logger.info("D.exit")
+    else:  # see if we can handle the event in the superstate
+        return hsm_handle_event((node._superstate,) + node_path, event, state)

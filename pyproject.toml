@@ -16,6 +16,16 @@ universal = true
 managed = true
 dev-dependencies = ["pytest>=8.3.3", "mypy>=1.11.2"]
 
+[tool.mypy]
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+strict = true
+mypy_path = "src"
+
+[tool.ruff]
+line-length = 100
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
