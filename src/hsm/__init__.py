@@ -3,23 +3,15 @@ from typing import (
     Final,
     Protocol,
     Type,
-    Union,
-    Optional,
     TypeVar,
-    NamedTuple,
-    Literal,
-    overload,
-    override,
     Protocol,
-    runtime_checkable,
     cast,
-    TypeGuard,
     Any,
     _ProtocolMeta,
-    reveal_type,
-    Generic,
+    Callable,
     assert_never,
 )
+from typing_extensions import TypeIs
 from enum import IntEnum
 
 
@@ -35,7 +27,7 @@ class HSMStatus(IntEnum):
     EVENT_UNHANDLED = -2_147_483_646
 
 
-def _is_hsm_node(cls: Any) -> TypeGuard[Type["Node[TEvent, TState]"]]:
+def _is_hsm_node(cls: Any) -> TypeIs[Type["Node[TEvent, TState]"]]:
     return getattr(cls, "__hsm_node", False)
 
 
@@ -46,23 +38,43 @@ class StateMeta(type):
         bases: tuple[type, ...],
         dct: dict[str, Any],
     ) -> Type["Node[TEvent, TState]"]:
-        # Initialize substates and superstate attributes
-        dct["_substates"] = ()
-        dct["_superstate"] = None
         dct["__hsm_node"] = True
-
-        # Create new class with the updated dictionary
         node_cls = cast(
             Type["Node[TEvent, TState]"], super().__new__(cls, name, bases, dct)
         )
+        node_cls._superstate = None
 
         substates: Final[list[Type["Node[TEvent, TState]"]]] = []
         for attr_value in dct.values():
             if _is_hsm_node(attr_value):
                 substates.append(attr_value)
                 attr_value._superstate = node_cls  # type: ignore
-
         node_cls._substates = tuple(substates)
+        del substates
+
+        if not hasattr(node_cls, "EventHandlers"):
+            return node_cls
+
+        event_handlers: Final[
+            list[
+                tuple[
+                    IntEnum,
+                    Callable[
+                        [TEvent, TState], Type["Node[TEvent, TState]"] | HSMStatus
+                    ],
+                ]
+            ]
+        ] = []
+        for name, value in node_cls.EventHandlers.__annotations__.items():
+            # Note: value.__args__ = (Literal[TEvent], TState, Return Type)
+            event_handlers.append(
+                (
+                    value.__args__[0].__args__[0],
+                    getattr(node_cls.EventHandlers, name),
+                )
+            )
+        node_cls._event_handlers = tuple(event_handlers)
+        del event_handlers
 
         return node_cls
 
@@ -76,29 +88,23 @@ class Node(Protocol[TEvent, TState], metaclass=CombinedMeta):
     def entry(cls, state: TState | None = None) -> Type["Node[TEvent, TState]"]: ...
 
     @classmethod
-    def run(
-        cls, event: TEvent, state: TState | None = None
-    ) -> Type["Node[TEvent, TState]"] | HSMStatus: ...
-
-    @classmethod
     def exit(cls, state: TState | None = None) -> None: ...
 
-    @classmethod
-    def run_events(cls) -> tuple[IntEnum, ...]:
-        handled_events: Final = cls.run.__annotations__["event"].__args__
-        if isinstance(handled_events, tuple):
-            return handled_events
-        raise ValueError(f"Invalid event type: {handled_events}")
-
-    _superstate: Type["Node[TEvent, TState]"]
+    _superstate: Type["Node[TEvent, TState]"] | None
     _substates: tuple[Type["Node[TEvent, TState]"], ...]
+    _event_handlers: tuple[
+        tuple[
+            IntEnum,
+            Callable[[TEvent, TState], Type["Node[TEvent, TState]"] | HSMStatus],
+        ],
+        ...,
+    ]
 
 
 def hsm_get_path_to_root(
-    node: Type[Node[TEvent, TState]],
-) -> tuple[Type[Node[TEvent, TState]], ...]:
-    path: Final[list[Type[Node[TEvent, TState]]]] = [node]
-
+    node: Type[Node[TEvent, TState]] | None,
+) -> tuple[Type[Node[TEvent, TState]] | None, ...]:
+    path: Final[list[Type[Node[TEvent, TState]] | None]] = [node]
     while node is not None:
         node = node._superstate
         path.append(node)
@@ -165,12 +171,12 @@ def hsm_handle_event(
     logger.debug(f"Handling event {event} in state {node.__name__}")
     print(f"Handling event {event.name} in state {node.__name__}")
 
-    # Handle the event in the current state
-    new_state_or_status = (
-        node.run(event, state)
-        if event in node.run_events()
-        else HSMStatus.EVENT_UNHANDLED
-    )
+    for e, handler in node._event_handlers:
+        if event == e:
+            new_state_or_status = handler(event, state)
+            break
+    else:
+        new_state_or_status = HSMStatus.EVENT_UNHANDLED
 
     print(new_state_or_status)
 

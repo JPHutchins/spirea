@@ -1,9 +1,9 @@
-from typing import Type, Literal as L, NamedTuple, assert_never, TypeVar, overload
+from typing import Type, Literal as L, TypeVar, Callable
 from unittest.mock import Mock, call
 from dataclasses import dataclass
 import pytest
 
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 from hsm import Node, hsm_handle_event, HSMStatus, hsm_handle_entries
 
@@ -30,20 +30,27 @@ T = TypeVar("T")
 mock = Mock()
 
 
+def s21_handle_h(
+    event: L[Event.h], state: State
+) -> L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION]:
+    mock.s21_run(event, state)
+    if state.foo == 0:
+        state.foo = 1
+        return HSMStatus.SELF_TRANSITION
+    else:
+        return HSMStatus.NO_TRANSITION
+
+
 class s0(Node[Event, State]):
     @classmethod
     def entry(cls, state: State | None = None) -> Type["Node[Event, State]"]:
         mock.s0_entry(state)
         return s0.s1
 
-    @classmethod  # type: ignore[override]
-    def run(
-        cls, event: L[Event.e], state: State | None = None
-    ) -> Type["s0.s2.s21.s211"]:
-        mock.s0_run(event, state)
-        if event == Event.e:
-            return s0.s2.s21.s211
-        assert_never(event)
+    class EventHandlers(Enum):
+        e: Callable[[L[Event.e], State | None], Type["s0.s2.s21.s211"]] = (
+            lambda e, s: (mock.s0_run(e, s) and None) or s0.s2.s21.s211
+        )
 
     @classmethod
     def exit(cls, state: State | None = None) -> None:
@@ -55,30 +62,22 @@ class s0(Node[Event, State]):
             mock.s1_entry(state)
             return s0.s1.s11
 
-        @classmethod  # type: ignore[override]
-        def run(
-            cls,
-            event: L[Event.a, Event.b, Event.c, Event.d, Event.f],
-            state: State | None = None,
-        ) -> (
-            Type["s0.s1.s11"]
-            | Type["s0"]
-            | Type["s0.s2"]
-            | Type["s0.s2.s21.s211"]
-            | L[HSMStatus.SELF_TRANSITION]
-        ):
-            mock.s1_run(event, state)
-            if event == Event.a:
-                return HSMStatus.SELF_TRANSITION
-            elif event == Event.b:
-                return s0.s1.s11
-            elif event == Event.c:
-                return s0.s2
-            elif event == Event.d:
-                return s0
-            elif event == Event.f:
-                return s0.s2.s21.s211
-            assert_never(event)
+        class EventHandlers(Enum):
+            a: Callable[[L[Event.a], State | None], HSMStatus.SELF_TRANSITION] = (
+                lambda e, s: (mock.s1_run(e, s) and None) or HSMStatus.SELF_TRANSITION
+            )
+            b: Callable[[L[Event.b], State | None], Type["s0.s1.s11"]] = (
+                lambda e, s: (mock.s1_run(e, s) and None) or s0.s1.s11
+            )
+            c: Callable[[L[Event.c], State | None], Type["s0.s2"]] = (
+                lambda e, s: (mock.s1_run(e, s) and None) or s0.s2
+            )
+            d: Callable[[L[Event.d], State | None], Type["s0"]] = (
+                lambda e, s: (mock.s1_run(e, s) and None) or s0
+            )
+            f: Callable[[L[Event.f], State | None], Type["s0.s2.s21.s211"]] = (
+                lambda e, s: (mock.s1_run(e, s) and None) or s0.s2.s21.s211
+            )
 
         @classmethod
         def exit(cls, state: State | None = None) -> None:
@@ -90,14 +89,10 @@ class s0(Node[Event, State]):
                 mock.s11_entry(state)
                 return cls
 
-            @classmethod  # type: ignore[override]
-            def run(
-                cls, event: L[Event.g], state: State | None = None
-            ) -> Type["s0.s2.s21.s211"]:
-                mock.s11_run(event, state)
-                if event == Event.g:
-                    return s0.s2.s21.s211
-                assert_never(event)
+            class EventHandlers(Enum):
+                g: Callable[[L[Event.g], State | None], Type["s0.s2.s21.s211"]] = (
+                    lambda e, s: (mock.s11_run(e, s) and None) or s0.s2.s21.s211
+                )
 
             @classmethod  # type: ignore[override]
             def exit(cls, state: State) -> None:
@@ -111,16 +106,13 @@ class s0(Node[Event, State]):
             mock.s2_entry(state)
             return s0.s2.s21
 
-        @classmethod  # type: ignore[override]
-        def run(
-            cls, event: L[Event.c, Event.f], state: State | None = None
-        ) -> Type["s0.s1"] | Type["s0.s1.s11"]:
-            mock.s2_run(event, state)
-            if event == Event.c:
-                return s0.s1
-            elif event == Event.f:
-                return s0.s1.s11
-            assert_never(event)
+        class EventHandlers(Enum):
+            c: Callable[[L[Event.c], State | None], Type["s0.s1"]] = (
+                lambda e, s: (mock.s2_run(e, s) and None) or s0.s1
+            )
+            f: Callable[[L[Event.f], State | None], Type["s0.s1.s11"]] = (
+                lambda e, s: (mock.s2_run(e, s) and None) or s0.s1.s11
+            )
 
         @classmethod
         def exit(cls, state: State | None = None) -> None:
@@ -132,23 +124,14 @@ class s0(Node[Event, State]):
                 mock.s21_entry(state)
                 return s0.s2.s21.s211
 
-            @classmethod  # type: ignore[override]
-            def run(
-                cls, event: L[Event.b, Event.h], state: State
-            ) -> (
-                Type["s0.s2.s21.s211"]
-                | L[HSMStatus.SELF_TRANSITION, HSMStatus.NO_TRANSITION]
-            ):
-                mock.s21_run(event, state)
-                if event == Event.b:
-                    return s0.s2.s21.s211
-                elif event == Event.h:
-                    if state.foo == 0:
-                        state.foo = 1
-                        return HSMStatus.SELF_TRANSITION
-                    else:
-                        return HSMStatus.NO_TRANSITION
-                assert_never(event)
+            class EventHandlers(Enum):
+                b: Callable[[L[Event.b], State | None], Type["s0.s2.s21.s211"]] = (
+                    lambda e, s: (mock.s21_run(e, s) and None) or s0.s2.s21.s211
+                )
+                h: Callable[
+                    [L[Event.h], State],
+                    L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION],
+                ] = s21_handle_h
 
             @classmethod
             def exit(cls, state: State | None = None) -> None:
@@ -160,16 +143,13 @@ class s0(Node[Event, State]):
                     mock.s211_entry(state)
                     return cls
 
-                @classmethod  # type: ignore[override]
-                def run(
-                    cls, event: L[Event.d, Event.g], state: State | None = None
-                ) -> Type["s0.s2.s21"] | Type["s0"]:
-                    mock.s211_run(event, state)
-                    if event == Event.d:
-                        return s0.s2.s21
-                    elif event == Event.g:
-                        return s0
-                    assert_never(event)
+                class EventHandlers(Enum):
+                    d: Callable[[L[Event.d], State | None], Type["s0.s2.s21"]] = (
+                        lambda e, s: (mock.s211_run(e, s) and None) or s0.s2.s21
+                    )
+                    g: Callable[[L[Event.g], State | None], Type["s0"]] = (
+                        lambda e, s: (mock.s211_run(e, s) and None) or s0
+                    )
 
                 @classmethod
                 def exit(cls, state: State | None = None) -> None:
