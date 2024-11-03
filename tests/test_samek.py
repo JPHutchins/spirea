@@ -162,20 +162,20 @@ def test_transitions_run() -> None:
     node = hsm_handle_entries(s0, state)  # type: ignore[type-abstract]
     assert node is s0.s1.s11
 
-    node = hsm_handle_event((node,), Event.b, state)
+    node = hsm_handle_event(node, Event.b, state)
     assert node is s0.s1.s11
 
-    node = hsm_handle_event((node,), Event.g, state)
+    node = hsm_handle_event(node, Event.g, state)
     assert node is s0.s2.s21.s211
 
-    node = hsm_handle_event((node,), Event.h, state)
+    node = hsm_handle_event(node, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
-    node = hsm_handle_event((node,), Event.g, state)
+    node = hsm_handle_event(node, Event.g, state)
     assert node is s0
 
-    node = hsm_handle_event((node,), Event.g, state)
+    node = hsm_handle_event(node, Event.g, state)
     assert node is s0
     assert state.foo == 1
 
@@ -188,7 +188,7 @@ def test_s0_unhandled(event: Event) -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0,), event, state)
+    node = hsm_handle_event(s0, event, state)
     assert node is s0
     assert state.foo == 0
 
@@ -222,7 +222,7 @@ def test_s0_e() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0,), Event.e, state)
+    node = hsm_handle_event(s0, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -262,7 +262,7 @@ def test_s11_a(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.a, state)
+    node = hsm_handle_event(s0.s1.s11, Event.a, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -301,7 +301,7 @@ def test_s11_b(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.b, state)
+    node = hsm_handle_event(s0.s1.s11, Event.b, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -341,7 +341,7 @@ def test_s11_c(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.c, state)
+    node = hsm_handle_event(s0.s1.s11, Event.c, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -381,7 +381,7 @@ def test_s11_d(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.d, state)
+    node = hsm_handle_event(s0.s1.s11, Event.d, state)
     assert node is s0
     assert state.foo == 0
 
@@ -416,7 +416,7 @@ def test_s11_e(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.e, state)
+    node = hsm_handle_event(s0.s1.s11, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -453,7 +453,7 @@ def test_s11_f(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.f, state)
+    node = hsm_handle_event(s0.s1.s11, Event.f, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -493,7 +493,7 @@ def test_s11_g(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.g, state)
+    node = hsm_handle_event(s0.s1.s11, Event.g, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -533,7 +533,7 @@ def test_s11_h(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s1.s11,), Event.h, state)
+    node = hsm_handle_event(s0.s1.s11, Event.h, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -568,7 +568,7 @@ def test_s211_a(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.a, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.a, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -603,7 +603,7 @@ def test_s211_b(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.b, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.b, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -643,7 +643,7 @@ def test_s211_c(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.c, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.c, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -683,7 +683,7 @@ def test_s211_d(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.d, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.d, state)
     assert node is s0.s2.s21
     assert state.foo == foo
 
@@ -723,7 +723,7 @@ def test_s211_e(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.e, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -763,7 +763,7 @@ def test_211_f(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.f, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.f, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -803,7 +803,7 @@ def test_211_g(foo: int) -> None:
 
     state = State(foo=foo)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.g, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.g, state)
     assert node is s0
     assert state.foo == foo
 
@@ -842,7 +842,7 @@ def test_211_h_foo_0() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.h, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -880,7 +880,7 @@ def test_211_h_foo_1() -> None:
 
     state = State(foo=1)
 
-    node = hsm_handle_event((s0.s2.s21.s211,), Event.h, state)
+    node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -920,7 +920,7 @@ def test_s21_unhandled(event: Event) -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0,), event, state)
+    node = hsm_handle_event(s0, event, state)
     assert node is s0
     assert state.foo == 0
 
@@ -954,7 +954,7 @@ def test_s21_b() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.b, state)
+    node = hsm_handle_event(s0.s2.s21, Event.b, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -971,7 +971,7 @@ def test_s21_c() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.c, state)
+    node = hsm_handle_event(s0.s2.s21, Event.c, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -991,7 +991,7 @@ def test_s21_e() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.e, state)
+    node = hsm_handle_event(s0.s2.s21, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -1012,7 +1012,7 @@ def test_s21_f() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.f, state)
+    node = hsm_handle_event(s0.s2.s21, Event.f, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -1032,7 +1032,7 @@ def test_s21_h_foo_0() -> None:
 
     state = State(foo=0)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.h, state)
+    node = hsm_handle_event(s0.s2.s21, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -1051,7 +1051,7 @@ def test_s21_h_foo_1() -> None:
 
     state = State(foo=1)
 
-    node = hsm_handle_event((s0.s2.s21,), Event.h, state)
+    node = hsm_handle_event(s0.s2.s21, Event.h, state)
     assert node is s0.s2.s21
     assert state.foo == 1
 
