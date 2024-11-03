@@ -5,7 +5,7 @@ import pytest
 
 from enum import IntEnum, Enum
 
-from hsm.sync import Node, hsm_handle_event, HSMStatus, hsm_handle_entries
+from hsm.asyncio import Node, hsm_handle_event, HSMStatus, hsm_handle_entries
 
 
 class Event(IntEnum):
@@ -40,7 +40,7 @@ def s21_handle_h(
 
 class s0(Node[Event, State]):
     @staticmethod
-    def entry(state: State | None = None) -> Type[Node[Event, State]]:
+    async def entry(state: State | None = None) -> Type[Node[Event, State]]:
         mock.s0_entry(state)
         return s0.s1
 
@@ -50,12 +50,12 @@ class s0(Node[Event, State]):
         )
 
     @staticmethod
-    def exit(state: State | None = None) -> None:
+    async def exit(state: State | None = None) -> None:
         mock.s0_exit(state)
 
     class s1(Node[Event, State]):
         @staticmethod
-        def entry(state: State | None = None) -> Type[Node[Event, State]]:
+        async def entry(state: State | None = None) -> Type[Node[Event, State]]:
             mock.s1_entry(state)
             return s0.s1.s11
 
@@ -77,12 +77,12 @@ class s0(Node[Event, State]):
             )
 
         @staticmethod
-        def exit(state: State | None = None) -> None:
+        async def exit(state: State | None = None) -> None:
             mock.s1_exit(state)
 
         class s11(Node[Event, State]):
             @staticmethod
-            def entry(state: State | None = None) -> Type[Node[Event, State]]:
+            async def entry(state: State | None = None) -> Type[Node[Event, State]]:
                 mock.s11_entry(state)
                 return s0.s1.s11
 
@@ -92,14 +92,14 @@ class s0(Node[Event, State]):
                 )
 
             @staticmethod  # type: ignore[override]
-            def exit(state: State) -> None:
+            async def exit(state: State) -> None:
                 mock.s11_exit(state)
                 if state.foo == 1:
                     state.foo = 0
 
     class s2(Node[Event, State]):
         @staticmethod
-        def entry(state: State | None = None) -> Type[Node[Event, State]]:
+        async def entry(state: State | None = None) -> Type[Node[Event, State]]:
             mock.s2_entry(state)
             return s0.s2.s21
 
@@ -112,12 +112,12 @@ class s0(Node[Event, State]):
             )
 
         @staticmethod
-        def exit(state: State | None = None) -> None:
+        async def exit(state: State | None = None) -> None:
             mock.s2_exit(state)
 
         class s21(Node[Event, State]):
             @staticmethod
-            def entry(state: State | None = None) -> Type[Node[Event, State]]:
+            async def entry(state: State | None = None) -> Type[Node[Event, State]]:
                 mock.s21_entry(state)
                 return s0.s2.s21.s211
 
@@ -131,12 +131,12 @@ class s0(Node[Event, State]):
                 ] = s21_handle_h
 
             @staticmethod
-            def exit(state: State | None = None) -> None:
+            async def exit(state: State | None = None) -> None:
                 mock.s21_exit(state)
 
             class s211(Node[Event, State]):
                 @staticmethod
-                def entry(state: State | None = None) -> Type[Node[Event, State]]:
+                async def entry(state: State | None = None) -> Type[Node[Event, State]]:
                     mock.s211_entry(state)
                     return s0.s2.s21.s211
 
@@ -149,43 +149,45 @@ class s0(Node[Event, State]):
                     )
 
                 @staticmethod
-                def exit(state: State | None = None) -> None:
+                async def exit(state: State | None = None) -> None:
                     mock.s211_exit(state)
 
 
-def test_transitions_run() -> None:
+@pytest.mark.asyncio
+async def test_transitions_run() -> None:
     state = State(foo=0)
 
-    node = hsm_handle_entries(s0, state)
+    node = await hsm_handle_entries(s0, state)
     assert node is s0.s1.s11
 
-    node = hsm_handle_event(node, Event.b, state)
+    node = await hsm_handle_event(node, Event.b, state)
     assert node is s0.s1.s11
 
-    node = hsm_handle_event(node, Event.g, state)
+    node = await hsm_handle_event(node, Event.g, state)
     assert node is s0.s2.s21.s211
 
-    node = hsm_handle_event(node, Event.h, state)
+    node = await hsm_handle_event(node, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
-    node = hsm_handle_event(node, Event.g, state)
+    node = await hsm_handle_event(node, Event.g, state)
     assert node is s0
 
-    node = hsm_handle_event(node, Event.g, state)
+    node = await hsm_handle_event(node, Event.g, state)
     assert node is s0
     assert state.foo == 1
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("event", set(Event) - {Event.e})
-def test_s0_unhandled(event: Event) -> None:
+async def test_s0_unhandled(event: Event) -> None:
     """All events but e are ignored in s0."""
 
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0, event, state)
+    node = await hsm_handle_event(s0, event, state)
     assert node is s0
     assert state.foo == 0
 
@@ -214,12 +216,13 @@ def test_s0_unhandled(event: Event) -> None:
     mock.s211_exit.assert_not_called()
 
 
-def test_s0_e() -> None:
+@pytest.mark.asyncio
+async def test_s0_e() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0, Event.e, state)
+    node = await hsm_handle_event(s0, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -253,13 +256,14 @@ def test_s0_e() -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_a(foo: int) -> None:
+async def test_s11_a(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.a, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.a, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -292,13 +296,14 @@ def test_s11_a(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_b(foo: int) -> None:
+async def test_s11_b(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.b, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.b, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -332,13 +337,14 @@ def test_s11_b(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_c(foo: int) -> None:
+async def test_s11_c(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.c, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.c, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -372,13 +378,14 @@ def test_s11_c(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_d(foo: int) -> None:
+async def test_s11_d(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.d, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.d, state)
     assert node is s0
     assert state.foo == 0
 
@@ -407,13 +414,14 @@ def test_s11_d(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_e(foo: int) -> None:
+async def test_s11_e(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.e, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -444,13 +452,14 @@ def test_s11_e(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_f(foo: int) -> None:
+async def test_s11_f(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.f, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.f, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -484,13 +493,14 @@ def test_s11_f(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_g(foo: int) -> None:
+async def test_s11_g(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.g, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.g, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -524,13 +534,14 @@ def test_s11_g(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s11_h(foo: int) -> None:
+async def test_s11_h(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s1.s11, Event.h, state)
+    node = await hsm_handle_event(s0.s1.s11, Event.h, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -559,13 +570,14 @@ def test_s11_h(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s211_a(foo: int) -> None:
+async def test_s211_a(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.a, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.a, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -594,13 +606,14 @@ def test_s211_a(foo: int) -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s211_b(foo: int) -> None:
+async def test_s211_b(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.b, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.b, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -634,13 +647,14 @@ def test_s211_b(foo: int) -> None:
     mock.s211_run.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s211_c(foo: int) -> None:
+async def test_s211_c(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.c, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.c, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -674,13 +688,14 @@ def test_s211_c(foo: int) -> None:
     mock.s211_run.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s211_d(foo: int) -> None:
+async def test_s211_d(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.d, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.d, state)
     assert node is s0.s2.s21
     assert state.foo == foo
 
@@ -714,13 +729,14 @@ def test_s211_d(foo: int) -> None:
     mock.s211_entry.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_s211_e(foo: int) -> None:
+async def test_s211_e(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.e, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == foo
 
@@ -754,13 +770,14 @@ def test_s211_e(foo: int) -> None:
     mock.s211_run.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_211_f(foo: int) -> None:
+async def test_211_f(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.f, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.f, state)
     assert node is s0.s1.s11
     assert state.foo == foo
 
@@ -794,13 +811,14 @@ def test_211_f(foo: int) -> None:
     mock.s211_run.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("foo", (0, 1))
-def test_211_g(foo: int) -> None:
+async def test_211_g(foo: int) -> None:
     mock.reset_mock()
 
     state = State(foo=foo)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.g, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.g, state)
     assert node is s0
     assert state.foo == foo
 
@@ -834,12 +852,13 @@ def test_211_g(foo: int) -> None:
     mock.s211_entry.assert_not_called()
 
 
-def test_211_h_foo_0() -> None:
+@pytest.mark.asyncio
+async def test_211_h_foo_0() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -872,12 +891,13 @@ def test_211_h_foo_0() -> None:
     mock.s211_run.assert_not_called()
 
 
-def test_211_h_foo_1() -> None:
+@pytest.mark.asyncio
+async def test_211_h_foo_1() -> None:
     mock.reset_mock()
 
     state = State(foo=1)
 
-    node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
+    node = await hsm_handle_event(s0.s2.s21.s211, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -907,17 +927,18 @@ def test_211_h_foo_1() -> None:
     mock.s211_exit.assert_not_called()
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "event", set(Event) - {Event.b, Event.c, Event.e, Event.f, Event.h}
 )
-def test_s21_unhandled(event: Event) -> None:
+async def test_s21_unhandled(event: Event) -> None:
     """Some events are unhandled."""
 
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0, event, state)
+    node = await hsm_handle_event(s0, event, state)
     assert node is s0
     assert state.foo == 0
 
@@ -946,12 +967,13 @@ def test_s21_unhandled(event: Event) -> None:
     mock.s211_exit.assert_not_called()
 
 
-def test_s21_b() -> None:
+@pytest.mark.asyncio
+async def test_s21_b() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21, Event.b, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.b, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -963,12 +985,13 @@ def test_s21_b() -> None:
     )
 
 
-def test_s21_c() -> None:
+@pytest.mark.asyncio
+async def test_s21_c() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21, Event.c, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.c, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -983,12 +1006,13 @@ def test_s21_c() -> None:
     )
 
 
-def test_s21_e() -> None:
+@pytest.mark.asyncio
+async def test_s21_e() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21, Event.e, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.e, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 0
 
@@ -1004,12 +1028,13 @@ def test_s21_e() -> None:
     )
 
 
-def test_s21_f() -> None:
+@pytest.mark.asyncio
+async def test_s21_f() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21, Event.f, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.f, state)
     assert node is s0.s1.s11
     assert state.foo == 0
 
@@ -1024,12 +1049,13 @@ def test_s21_f() -> None:
     )
 
 
-def test_s21_h_foo_0() -> None:
+@pytest.mark.asyncio
+async def test_s21_h_foo_0() -> None:
     mock.reset_mock()
 
     state = State(foo=0)
 
-    node = hsm_handle_event(s0.s2.s21, Event.h, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.h, state)
     assert node is s0.s2.s21.s211
     assert state.foo == 1
 
@@ -1043,12 +1069,13 @@ def test_s21_h_foo_0() -> None:
     )
 
 
-def test_s21_h_foo_1() -> None:
+@pytest.mark.asyncio
+async def test_s21_h_foo_1() -> None:
     mock.reset_mock()
 
     state = State(foo=1)
 
-    node = hsm_handle_event(s0.s2.s21, Event.h, state)
+    node = await hsm_handle_event(s0.s2.s21, Event.h, state)
     assert node is s0.s2.s21
     assert state.foo == 1
 

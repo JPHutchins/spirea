@@ -14,7 +14,11 @@ build-backend = "hatchling.build"
 [tool.rye]
 universal = true
 managed = true
-dev-dependencies = ["pytest>=8.3.3", "mypy>=1.11.2"]
+dev-dependencies = [
+    "pytest>=8.3.3",
+    "mypy>=1.11.2",
+    "pytest-asyncio>=0.24.0",
+]
 
 [tool.mypy]
 disallow_untyped_calls = true
