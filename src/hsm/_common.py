@@ -86,9 +86,9 @@ class NodeMeta(_NodeMeta, _ProtocolMeta):
 
 def hsm_get_path_to_root(
     node: Type[TNode],
-) -> tuple[Type[TNode], ...]:
-    path: Final[list[Type[TNode]]] = [node]
-    while node is not None and node._superstate is not None:  # type: ignore[attr-defined]
+) -> tuple[Type[TNode] | None, ...]:
+    path: Final[list[Type[TNode] | None]] = [node]
+    while node is not None:
         node = node._superstate  # type: ignore[attr-defined]
         path.append(node)
 
@@ -96,14 +96,14 @@ def hsm_get_path_to_root(
 
 
 def hsm_get_lca(
-    path1: tuple[Type[TNode], ...],
-    path2: tuple[Type[TNode], ...],
-) -> Type[TNode]:
+    path1: tuple[Type[TNode] | None, ...],
+    path2: tuple[Type[TNode] | None, ...],
+) -> Type[TNode] | None:
     for node in path1:
         if node in path2:
             return node
 
-    raise ValueError("No common ancestor found")
+    return None
 
 
 def hsm_get_event_handler(

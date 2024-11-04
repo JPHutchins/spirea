@@ -92,7 +92,6 @@ def hsm_handle_event(
                 return node
 
             elif status == HSMStatus.SELF_TRANSITION:
-                print(f"Doing self-transition for {current_node.__name__}")
                 logger.debug(f"Self-transition in state {current_node.__name__}")
                 for n in node_path:
                     n.exit(state)
@@ -121,8 +120,10 @@ def hsm_handle_event(
 
         # do the exits from the original node to the LCA
         next_node = node
-        while next_node != lca and next_node._superstate is not None:
+        while next_node != lca:
             next_node.exit(state)
+            if next_node._superstate is None:
+                break
             next_node = next_node._superstate
 
         # start the entry path past the LCA
@@ -134,6 +135,8 @@ def hsm_handle_event(
             return next_node
 
         # do the entries from LCA to the new state
+        if entry_path[0] is None:
+            raise ValueError("The entry path is empty")
         next_node = entry_path[0]
         for entry_node in entry_path:
             if entry_node != next_node:
