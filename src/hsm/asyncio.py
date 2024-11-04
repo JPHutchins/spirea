@@ -1,7 +1,8 @@
 """Hierarchical State Machine (HSM) API for asynchronous runtime."""
 
 import logging
-from typing import Final, Protocol, Type, assert_never
+from typing import Final, Protocol, Type, assert_never, Callable, Awaitable
+from enum import IntEnum
 
 from hsm._common import (
     TEvent,
@@ -10,7 +11,6 @@ from hsm._common import (
     NodeMeta,
     hsm_get_path_to_root,
     hsm_get_lca,
-    hsm_get_event_handler,
     is_hsm_status,
 )
 
@@ -28,6 +28,32 @@ class Node(Protocol[TEvent, TState], metaclass=NodeMeta):
 
     @staticmethod
     async def exit(state: TState | None = None) -> None: ...
+
+    _event_handlers: tuple[
+        tuple[
+            IntEnum,
+            Callable[
+                [TEvent, TState | None],
+                Awaitable[Type["Node[TEvent, TState]"] | HSMStatus],
+            ],
+        ],
+        ...,
+    ] = ()
+    """This is provided by the metaclass, here for type hinting only."""
+
+
+def _hsm_get_event_handler(
+    node: Type[Node[TEvent, TState]],
+    event: TEvent,
+) -> (
+    Callable[[TEvent, TState | None], Awaitable[Type[Node[TEvent, TState]] | HSMStatus]]
+    | None
+):
+    for e, handler in node._event_handlers:
+        if event == e:
+            return handler
+
+    return None
 
 
 async def hsm_handle_entries(
@@ -79,8 +105,8 @@ async def hsm_handle_event(
     while True:
         current_node: Final = node_path[-1]  # type: ignore[misc]
         node_or_status: Final = (  # type: ignore[misc]
-            handler(event, state)
-            if (handler := hsm_get_event_handler(current_node, event))
+            await handler(event, state)
+            if (handler := _hsm_get_event_handler(current_node, event))
             else HSMStatus.EVENT_UNHANDLED
         )
 

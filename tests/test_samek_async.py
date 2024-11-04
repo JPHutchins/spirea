@@ -1,4 +1,4 @@
-from typing import Type, Literal as L, Callable
+from typing import Type, Literal as L, Callable, Awaitable as A
 from unittest.mock import Mock, call
 from dataclasses import dataclass
 import pytest
@@ -27,7 +27,7 @@ class State:
 mock = Mock()
 
 
-def s21_handle_h(
+async def s21_h(
     event: L[Event.h], state: State
 ) -> L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION]:
     mock.s21_run(event, state)
@@ -38,6 +38,61 @@ def s21_handle_h(
         return HSMStatus.NO_TRANSITION
 
 
+async def s1_a(event: L[Event.a], state: State | None) -> L[HSMStatus.SELF_TRANSITION]:
+    mock.s1_run(event, state)
+    return HSMStatus.SELF_TRANSITION
+
+
+async def s1_b(event: L[Event.b], state: State | None) -> Type["s0.s1.s11"]:
+    mock.s1_run(event, state)
+    return s0.s1.s11
+
+
+async def s1_c(event: L[Event.c], state: State | None) -> Type["s0.s2"]:
+    mock.s1_run(event, state)
+    return s0.s2
+
+
+async def s1_d(event: L[Event.d], state: State | None) -> Type["s0"]:
+    mock.s1_run(event, state)
+    return s0
+
+
+async def s1_f(event: L[Event.f], state: State | None) -> Type["s0.s2.s21.s211"]:
+    mock.s1_run(event, state)
+    return s0.s2.s21.s211
+
+
+async def s11_g(event: L[Event.g], state: State | None) -> Type["s0.s2.s21.s211"]:
+    mock.s11_run(event, state)
+    return s0.s2.s21.s211
+
+
+async def s2_c(event: L[Event.c], state: State | None) -> Type["s0.s1"]:
+    mock.s2_run(event, state)
+    return s0.s1
+
+
+async def s2_f(event: L[Event.f], state: State | None) -> Type["s0.s1.s11"]:
+    mock.s2_run(event, state)
+    return s0.s1.s11
+
+
+async def s21_b(event: L[Event.b], state: State | None) -> Type["s0.s2.s21.s211"]:
+    mock.s21_run(event, state)
+    return s0.s2.s21.s211
+
+
+async def s211_d(event: L[Event.d], state: State | None) -> Type["s0.s2.s21"]:
+    mock.s211_run(event, state)
+    return s0.s2.s21
+
+
+async def s211_g(event: L[Event.g], state: State | None) -> Type["s0"]:
+    mock.s211_run(event, state)
+    return s0
+
+
 class s0(Node[Event, State]):
     @staticmethod
     async def entry(state: State | None = None) -> Type[Node[Event, State]]:
@@ -45,9 +100,13 @@ class s0(Node[Event, State]):
         return s0.s1
 
     class EventHandlers(Enum):
-        e: Callable[[L[Event.e], State | None], Type["s0.s2.s21.s211"]] = (
-            lambda e, s: (mock.s0_run(e, s) and None) or s0.s2.s21.s211
-        )
+
+        @staticmethod
+        async def _e(event: L[Event.e], state: State | None) -> Type["s0.s2.s21.s211"]:
+            mock.s0_run(event, state)
+            return s0.s2.s21.s211
+
+        e: Callable[[L[Event.e], State | None], A[Type["s0.s2.s21.s211"]]] = _e
 
     @staticmethod
     async def exit(state: State | None = None) -> None:
@@ -60,21 +119,13 @@ class s0(Node[Event, State]):
             return s0.s1.s11
 
         class EventHandlers(Enum):
-            a: Callable[[L[Event.a], State | None], L[HSMStatus.SELF_TRANSITION]] = (
-                lambda e, s: (mock.s1_run(e, s) and None) or HSMStatus.SELF_TRANSITION
+            a: Callable[[L[Event.a], State | None], A[L[HSMStatus.SELF_TRANSITION]]] = (
+                s1_a
             )
-            b: Callable[[L[Event.b], State | None], Type["s0.s1.s11"]] = (
-                lambda e, s: (mock.s1_run(e, s) and None) or s0.s1.s11
-            )
-            c: Callable[[L[Event.c], State | None], Type["s0.s2"]] = (
-                lambda e, s: (mock.s1_run(e, s) and None) or s0.s2
-            )
-            d: Callable[[L[Event.d], State | None], Type["s0"]] = (
-                lambda e, s: (mock.s1_run(e, s) and None) or s0
-            )
-            f: Callable[[L[Event.f], State | None], Type["s0.s2.s21.s211"]] = (
-                lambda e, s: (mock.s1_run(e, s) and None) or s0.s2.s21.s211
-            )
+            b: Callable[[L[Event.b], State | None], A[Type["s0.s1.s11"]]] = s1_b
+            c: Callable[[L[Event.c], State | None], A[Type["s0.s2"]]] = s1_c
+            d: Callable[[L[Event.d], State | None], A[Type["s0"]]] = s1_d
+            f: Callable[[L[Event.f], State | None], A[Type["s0.s2.s21.s211"]]] = s1_f
 
         @staticmethod
         async def exit(state: State | None = None) -> None:
@@ -87,8 +138,8 @@ class s0(Node[Event, State]):
                 return s0.s1.s11
 
             class EventHandlers(Enum):
-                g: Callable[[L[Event.g], State | None], Type["s0.s2.s21.s211"]] = (
-                    lambda e, s: (mock.s11_run(e, s) and None) or s0.s2.s21.s211
+                g: Callable[[L[Event.g], State | None], A[Type["s0.s2.s21.s211"]]] = (
+                    s11_g
                 )
 
             @staticmethod  # type: ignore[override]
@@ -104,12 +155,8 @@ class s0(Node[Event, State]):
             return s0.s2.s21
 
         class EventHandlers(Enum):
-            c: Callable[[L[Event.c], State | None], Type["s0.s1"]] = (
-                lambda e, s: (mock.s2_run(e, s) and None) or s0.s1
-            )
-            f: Callable[[L[Event.f], State | None], Type["s0.s1.s11"]] = (
-                lambda e, s: (mock.s2_run(e, s) and None) or s0.s1.s11
-            )
+            c: Callable[[L[Event.c], State | None], A[Type["s0.s1"]]] = s2_c
+            f: Callable[[L[Event.f], State | None], A[Type["s0.s1.s11"]]] = s2_f
 
         @staticmethod
         async def exit(state: State | None = None) -> None:
@@ -122,13 +169,13 @@ class s0(Node[Event, State]):
                 return s0.s2.s21.s211
 
             class EventHandlers(Enum):
-                b: Callable[[L[Event.b], State | None], Type["s0.s2.s21.s211"]] = (
-                    lambda e, s: (mock.s21_run(e, s) and None) or s0.s2.s21.s211
+                b: Callable[[L[Event.b], State | None], A[Type["s0.s2.s21.s211"]]] = (
+                    s21_b
                 )
                 h: Callable[
                     [L[Event.h], State],
-                    L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION],
-                ] = s21_handle_h
+                    A[L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION]],
+                ] = s21_h
 
             @staticmethod
             async def exit(state: State | None = None) -> None:
@@ -141,12 +188,10 @@ class s0(Node[Event, State]):
                     return s0.s2.s21.s211
 
                 class EventHandlers(Enum):
-                    d: Callable[[L[Event.d], State | None], Type["s0.s2.s21"]] = (
-                        lambda e, s: (mock.s211_run(e, s) and None) or s0.s2.s21
+                    d: Callable[[L[Event.d], State | None], A[Type["s0.s2.s21"]]] = (
+                        s211_d
                     )
-                    g: Callable[[L[Event.g], State | None], Type["s0"]] = (
-                        lambda e, s: (mock.s211_run(e, s) and None) or s0
-                    )
+                    g: Callable[[L[Event.g], State | None], A[Type["s0"]]] = s211_g
 
                 @staticmethod
                 async def exit(state: State | None = None) -> None:

@@ -24,13 +24,6 @@ def _is_hsm_node(cls: Any) -> TypeIs[Type["NodeMeta"]]:
 class _NodeMixin:
     _superstate: type | None
     _substates: tuple[type, ...]
-    _event_handlers: tuple[
-        tuple[
-            IntEnum,
-            Callable[[TEvent, TState | None], type | HSMStatus],
-        ],
-        ...,
-    ]
 
 
 class _NodeMeta(type, _NodeMixin):
@@ -74,7 +67,7 @@ class _NodeMeta(type, _NodeMixin):
                     getattr(node_cls.EventHandlers, name),
                 )
             )
-        node_cls._event_handlers = tuple(event_handlers)
+        node_cls._event_handlers = tuple(event_handlers)  # type: ignore[attr-defined]
         del event_handlers
 
         return node_cls
@@ -102,16 +95,5 @@ def hsm_get_lca(
     for node in path1:
         if node in path2:
             return node
-
-    return None
-
-
-def hsm_get_event_handler(
-    node: Type[TNode],
-    event: TEvent,
-) -> Callable[[TEvent, TState | None], Type[TNode] | HSMStatus] | None:
-    for e, handler in node._event_handlers:  # type: ignore[attr-defined]
-        if event == e:
-            return handler  # type: ignore[no-any-return]
 
     return None
