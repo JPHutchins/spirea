@@ -4,9 +4,10 @@
 # last locked with the following flags:
 #   pre: false
 #   features: []
-#   all-features: false
+#   all-features: true
 #   with-sources: false
 #   generate-hashes: false
 #   universal: true
 
 -e file:.
+readchar==4.2.1

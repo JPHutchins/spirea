@@ -3,9 +3,11 @@ name = "hsm"
 version = "0.1.0"
 description = "Add your description here"
 authors = [{ name = "J.P. Hutchins", email = "jphutchins@gmail.com" }]
-dependencies = []
 readme = "README.md"
 requires-python = ">= 3.8"
+
+[project.optional-dependencies]
+examples = ["readchar>=4.2.1"]
 
 [build-system]
 requires = ["hatchling"]
@@ -14,11 +16,7 @@ build-backend = "hatchling.build"
 [tool.rye]
 universal = true
 managed = true
-dev-dependencies = [
-    "pytest>=8.3.3",
-    "mypy>=1.11.2",
-    "pytest-asyncio>=0.24.0",
-]
+dev-dependencies = ["pytest>=8.3.3", "mypy>=1.11.2", "pytest-asyncio>=0.24.0"]
 
 [tool.mypy]
 disallow_untyped_calls = true
