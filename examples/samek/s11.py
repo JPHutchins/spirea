@@ -8,8 +8,8 @@ def entry(state: State | None = None) -> None:
     print("        s11 entry")
 
 
-def run_e(event: L[Event.e], state: State | None) -> None:
-    print("        s11 run e")
+def run_g(event: L[Event.g], state: State | None) -> None:
+    print("        s11 run g")
 
 
 def exit(state: State) -> None:

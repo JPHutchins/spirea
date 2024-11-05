@@ -72,7 +72,7 @@ class s0(Node[Event, State]):
 
             class EventHandlers(Enum):
                 g: Callable[[L[Event.g], State | None], Type["s0.s2.s21.s211"]] = (
-                    lambda e, s: (mock.s11_run(e, s) and s11_.run_e(e, s))  # type: ignore[func-returns-value]
+                    lambda e, s: (mock.s11_run(e, s) and s11_.run_g(e, s))  # type: ignore[func-returns-value]
                     or s0.s2.s21.s211
                 )
 
