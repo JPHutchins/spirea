@@ -18,7 +18,7 @@ mock = Mock()
 
 class s0(Node[Event, State]):
     @staticmethod
-    def entry(state: State | None = None) -> Type[Node[Event, State]]:
+    def entry(state: State | None = None) -> type["s0.s1"]:
         mock.s0_entry(state)
         s0_.entry(state)
         return s0.s1
