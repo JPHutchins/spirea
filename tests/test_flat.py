@@ -2,9 +2,7 @@ from typing import (
     Type,
     Literal as L,
     NamedTuple,
-    assert_never,
     TypeVar,
-    overload,
     Callable,
 )
 from unittest.mock import Mock
@@ -43,7 +41,7 @@ broken_exit_mock = Mock()
 
 class Idle(Node[Event, State]):
     @staticmethod
-    def entry(state: State | None = None) -> Type["Node[Event, State]"]:
+    def entry(state: State | None = None) -> Type[Node[Event, State]]:
         idle_entry_mock(state)
         return Idle
 
@@ -62,12 +60,12 @@ class Idle(Node[Event, State]):
 
 class Working(Node[Event, State]):
     @staticmethod
-    def entry(state: State | None = None) -> Type["Node[Event, State]"]:
+    def entry(state: State | None = None) -> Type[Node[Event, State]]:
         working_entry_mock(state)
         return Working
 
     class EventHandlers:
-        DONE: Callable[[L[Event.DONE], State | None], Type["Idle"]] = (
+        DONE: Callable[[L[Event.DONE], State | None], Type[Idle]] = (
             lambda e, s: (working_run_mock(e, s) and None) or Idle
         )
 
@@ -78,12 +76,12 @@ class Working(Node[Event, State]):
 
 class Broken(Node[Event, State]):
     @staticmethod
-    def entry(state: State | None = None) -> Type["Node[Event, State]"]:
+    def entry(state: State | None = None) -> Type[Node[Event, State]]:
         broken_entry_mock(state)
         return Broken
 
     class EventHandlers:
-        FIXED: Callable[[L[Event.FIXED], State | None], Type["Idle"]] = (
+        FIXED: Callable[[L[Event.FIXED], State | None], Type[Idle]] = (
             lambda e, s: (broken_run_mock(e, s) and None) or Idle
         )
 

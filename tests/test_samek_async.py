@@ -3,7 +3,7 @@ from unittest.mock import Mock, call
 from dataclasses import dataclass
 import pytest
 
-from enum import IntEnum, Enum
+from enum import IntEnum
 
 from hsm.asyncio import Node, hsm_handle_event, HSMStatus, hsm_handle_entries
 
@@ -99,7 +99,7 @@ class s0(Node[Event, State]):
         mock.s0_entry(state)
         return s0.s1
 
-    class EventHandlers(Enum):
+    class EventHandlers:
 
         @staticmethod
         async def _e(event: L[Event.e], state: State | None) -> Type["s0.s2.s21.s211"]:
@@ -118,7 +118,7 @@ class s0(Node[Event, State]):
             mock.s1_entry(state)
             return s0.s1.s11
 
-        class EventHandlers(Enum):
+        class EventHandlers:
             a: Callable[[L[Event.a], State | None], A[L[HSMStatus.SELF_TRANSITION]]] = (
                 s1_a
             )
@@ -137,13 +137,13 @@ class s0(Node[Event, State]):
                 mock.s11_entry(state)
                 return s0.s1.s11
 
-            class EventHandlers(Enum):
+            class EventHandlers:
                 g: Callable[[L[Event.g], State | None], A[Type["s0.s2.s21.s211"]]] = (
                     s11_g
                 )
 
-            @staticmethod  # type: ignore[override]
-            async def exit(state: State) -> None:
+            @staticmethod
+            async def exit(state: State) -> None:  # type: ignore[override]
                 mock.s11_exit(state)
                 if state.foo == 1:
                     state.foo = 0
@@ -154,7 +154,7 @@ class s0(Node[Event, State]):
             mock.s2_entry(state)
             return s0.s2.s21
 
-        class EventHandlers(Enum):
+        class EventHandlers:
             c: Callable[[L[Event.c], State | None], A[Type["s0.s1"]]] = s2_c
             f: Callable[[L[Event.f], State | None], A[Type["s0.s1.s11"]]] = s2_f
 
@@ -168,7 +168,7 @@ class s0(Node[Event, State]):
                 mock.s21_entry(state)
                 return s0.s2.s21.s211
 
-            class EventHandlers(Enum):
+            class EventHandlers:
                 b: Callable[[L[Event.b], State | None], A[Type["s0.s2.s21.s211"]]] = (
                     s21_b
                 )
@@ -187,7 +187,7 @@ class s0(Node[Event, State]):
                     mock.s211_entry(state)
                     return s0.s2.s21.s211
 
-                class EventHandlers(Enum):
+                class EventHandlers:
                     d: Callable[[L[Event.d], State | None], A[Type["s0.s2.s21"]]] = (
                         s211_d
                     )
