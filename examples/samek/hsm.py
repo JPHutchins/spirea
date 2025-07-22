@@ -1,5 +1,4 @@
 from typing import Type, Callable, Literal as L
-from enum import Enum
 
 from unittest.mock import Mock
 
@@ -23,7 +22,7 @@ class s0(Node[Event, State]):
         s0_.entry(state)
         return s0.s1
 
-    class EventHandlers(Enum):
+    class EventHandlers:
         e: Callable[[L[Event.e], State | None], Type["s0.s2.s21.s211"]] = (
             lambda e, s: (mock.s0_run(e, s) and s0_.run_e(e, s)) or s0.s2.s21.s211  # type: ignore[func-returns-value]
         )
@@ -40,7 +39,7 @@ class s0(Node[Event, State]):
             s1_.entry(state)
             return s0.s1.s11
 
-        class EventHandlers(Enum):
+        class EventHandlers:
             a: Callable[[L[Event.a], State | None], L[HSMStatus.SELF_TRANSITION]] = (
                 lambda e, s: (mock.s1_run(e, s) and s1_.run_a(e, s))  # type: ignore[func-returns-value]
                 or HSMStatus.SELF_TRANSITION
@@ -70,15 +69,17 @@ class s0(Node[Event, State]):
                 s11_.entry(state)
                 return s0.s1.s11
 
-            class EventHandlers(Enum):
+            class EventHandlers:
                 g: Callable[[L[Event.g], State | None], Type["s0.s2.s21.s211"]] = (
                     lambda e, s: (mock.s11_run(e, s) and s11_.run_g(e, s))  # type: ignore[func-returns-value]
                     or s0.s2.s21.s211
                 )
 
-            @staticmethod  # type: ignore[override]
-            def exit(state: State) -> None:
+            @staticmethod
+            def exit(state: State | None = None) -> None:
                 mock.s11_exit(state)
+                if state is None:
+                    raise ValueError
                 s11_.exit(state)
 
     class s2(Node[Event, State]):
@@ -88,7 +89,7 @@ class s0(Node[Event, State]):
             s2_.entry(state)
             return s0.s2.s21
 
-        class EventHandlers(Enum):
+        class EventHandlers:
             c: Callable[[L[Event.c], State | None], Type["s0.s1"]] = (
                 lambda e, s: (mock.s2_run(e, s) and s2_.run_c(e, s)) or s0.s1  # type: ignore[func-returns-value]
             )
@@ -108,7 +109,7 @@ class s0(Node[Event, State]):
                 s21_.entry(state)
                 return s0.s2.s21.s211
 
-            class EventHandlers(Enum):
+            class EventHandlers:
                 b: Callable[[L[Event.b], State | None], Type["s0.s2.s21.s211"]] = (
                     lambda e, s: (mock.s21_run(e, s) and s21_.run_b(e, s))  # type: ignore[func-returns-value]
                     or s0.s2.s21.s211
@@ -130,7 +131,7 @@ class s0(Node[Event, State]):
                     s211_.entry(state)
                     return s0.s2.s21.s211
 
-                class EventHandlers(Enum):
+                class EventHandlers:
                     d: Callable[[L[Event.d], State | None], Type["s0.s2.s21"]] = (
                         lambda e, s: (mock.s211_run(e, s) and s211_.run_d(e, s))  # type: ignore[func-returns-value]
                         or s0.s2.s21
