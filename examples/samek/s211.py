@@ -1,20 +1,23 @@
+# Copyright (c) 2025 JP Hutchins
+# SPDX-License-Identifier: MIT
+
 from typing import Literal as L
 
-from examples.samek.state import State
 from examples.samek.events import Event
+from examples.samek.state import State
 
 
 def entry(state: State | None = None) -> None:
-    print("            s211 entry")
+	print("            s211 entry")
 
 
 def run_d(event: L[Event.d], state: State | None) -> None:
-    print("            s211 run d")
+	print("            s211 run d")
 
 
 def run_g(event: L[Event.g], state: State | None) -> None:
-    print("            s211 run g")
+	print("            s211 run g")
 
 
 def exit(state: State | None) -> None:
-    print("            s211 exit")
+	print("            s211 exit")
