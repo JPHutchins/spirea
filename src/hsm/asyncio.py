@@ -2,7 +2,6 @@
 
 import logging
 from typing import Final, Protocol, Type, assert_never, Callable, Awaitable
-from enum import IntEnum
 
 from hsm._common import (
     TEvent,
@@ -31,7 +30,7 @@ class Node(Protocol[TEvent, TState], metaclass=NodeMeta):
 
     _event_handlers: tuple[
         tuple[
-            IntEnum,
+            TEvent | Type[TEvent],
             Callable[
                 [TEvent, TState | None],
                 Awaitable[Type["Node[TEvent, TState]"] | HSMStatus],

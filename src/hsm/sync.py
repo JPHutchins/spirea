@@ -1,7 +1,6 @@
 """Hierarchical State Machine (HSM) API for synchronous runtime."""
 
 import logging
-from enum import IntEnum
 from typing import Final, Protocol, Type, assert_never, Callable
 
 from hsm._common import (
@@ -31,7 +30,7 @@ class Node(Protocol[TEvent, TState], metaclass=NodeMeta):
 
     _event_handlers: tuple[
         tuple[
-            IntEnum,
+            TEvent | Type[TEvent],
             Callable[[TEvent, TState | None], Type["Node[TEvent, TState]"] | HSMStatus],
         ],
         ...,
@@ -44,7 +43,7 @@ def _hsm_get_event_handler(
     event: TEvent,
 ) -> Callable[[TEvent, TState | None], Type[Node[TEvent, TState]] | HSMStatus] | None:
     for e, handler in node._event_handlers:
-        if event == e:
+        if e is type(event) or e == event:
             return handler
 
     return None

@@ -2,7 +2,7 @@ from enum import IntEnum
 from typing import Any, Callable, Final, Type, TypeVar, _ProtocolMeta
 from typing_extensions import TypeIs
 
-TEvent = TypeVar("TEvent", bound=IntEnum)
+TEvent = TypeVar("TEvent")
 TState = TypeVar("TState")
 TNode = TypeVar("TNode")
 
@@ -48,10 +48,12 @@ class _NodeMeta(type, _NodeMixin):
         if not hasattr(node_cls, "EventHandlers"):
             return node_cls
 
-        event_handlers: Final[
+        # Create a list of event handlers. Each handler is a tuple that pairs
+        # the event, or event type, with the handler function.
+        event_handlers: Final[  # type: ignore[valid-type]
             list[
                 tuple[
-                    IntEnum,
+                    TEvent | Type[TEvent],
                     Callable[
                         [TEvent, TState | None],
                         type | HSMStatus,
@@ -60,10 +62,11 @@ class _NodeMeta(type, _NodeMixin):
             ]
         ] = []
         for name, value in node_cls.EventHandlers.__annotations__.items():
-            # Note: value.__args__ = (Literal[TEvent], TState, Return Type)
             event_handlers.append(
                 (
-                    value.__args__[0].__args__[0],
+                    # It is possible that the value is an enum or a union, so we
+                    # need to extract the first type, if it exists.
+                    value.__args__[0].__args__[0] if hasattr(value.__args__[0], "__args__") else value.__args__[0],
                     getattr(node_cls.EventHandlers, name),
                 )
             )
