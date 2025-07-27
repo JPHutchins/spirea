@@ -12,5 +12,5 @@ runs:
       with:
         python-version-file: "pyproject.toml"
 
-    - run: uv sync --locked --all-extras --dev
+    - run: uv sync --locked --all-extras --dev --group examples
       shell: bash
