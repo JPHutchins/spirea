@@ -94,10 +94,6 @@ async def hsm_handle_event(
 		node (Type[Node[TEvent, TState]]): The new node after handling the event.
 	"""
 
-	node: Final = node  # type: ignore[misc]
-	event: Final = event  # type: ignore[misc]
-	state: Final = state  # type: ignore[misc]
-
 	# the node path from the starting node up to the handling node
 	node_path: Final[list[Type[Node[TEvent, TState]]]] = [node]
 
