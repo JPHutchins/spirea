@@ -5,20 +5,30 @@ from typing import Final
 
 import readchar
 
-from examples.samek.events import Event
+from examples.samek.events import (
+	Event,
+	EventA,
+	EventB,
+	EventC,
+	EventD,
+	EventE,
+	EventF,
+	EventG,
+	EventH,
+)
 from examples.samek.hsm import s0
 from examples.samek.state import State
 from spirea.sync import Node, hsm_handle_entries, hsm_handle_event
 
 MAP_CHAR_TO_EVENT: Final[dict[str, Event]] = {
-	"a": Event.a,
-	"b": Event.b,
-	"c": Event.c,
-	"d": Event.d,
-	"e": Event.e,
-	"f": Event.f,
-	"g": Event.g,
-	"h": Event.h,
+	"a": EventA(),
+	"b": EventB(),
+	"c": EventC(),
+	"d": EventD(),
+	"e": EventE(),
+	"f": EventF(),
+	"g": EventG(),
+	"h": EventH(),
 }
 
 

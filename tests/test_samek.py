@@ -5,7 +5,17 @@ from unittest.mock import call
 
 import pytest
 
-from examples.samek.events import Event
+from examples.samek.events import (
+	Event,
+	EventA,
+	EventB,
+	EventC,
+	EventD,
+	EventE,
+	EventF,
+	EventG,
+	EventH,
+)
 from examples.samek.hsm import mock, s0
 from examples.samek.state import State
 from spirea.sync import hsm_handle_entries, hsm_handle_event
@@ -17,25 +27,27 @@ def test_transitions_run() -> None:
 	node = hsm_handle_entries(s0, state)
 	assert node is s0.s1.s11
 
-	node = hsm_handle_event(node, Event.b, state)
+	node = hsm_handle_event(node, EventB(), state)
 	assert node is s0.s1.s11
 
-	node = hsm_handle_event(node, Event.g, state)
+	node = hsm_handle_event(node, EventG(), state)
 	assert node is s0.s2.s21.s211
 
-	node = hsm_handle_event(node, Event.h, state)
+	node = hsm_handle_event(node, EventH(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 1
 
-	node = hsm_handle_event(node, Event.g, state)
+	node = hsm_handle_event(node, EventG(), state)
 	assert node is s0
 
-	node = hsm_handle_event(node, Event.g, state)
+	node = hsm_handle_event(node, EventG(), state)
 	assert node is s0
 	assert state.foo == 1
 
 
-@pytest.mark.parametrize("event", set(Event) - {Event.e})
+@pytest.mark.parametrize(
+	"event", (EventA(), EventB(), EventC(), EventD(), EventF(), EventG(), EventH())
+)
 def test_s0_unhandled(event: Event) -> None:
 	"""All events but e are ignored in s0."""
 
@@ -77,13 +89,13 @@ def test_s0_e() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0, Event.e, state)
+	node = hsm_handle_event(s0, EventE(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(Event.e, state),
+			call.s0_run(EventE(), state),
 			call.s2_entry(state),
 			call.s21_entry(state),
 			call.s211_entry(state),
@@ -117,13 +129,13 @@ def test_s11_a(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.a, state)
+	node = hsm_handle_event(s0.s1.s11, EventA(), state)
 	assert node is s0.s1.s11
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(Event.a, state),
+			call.s1_run(EventA(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 			call.s1_entry(state),
@@ -156,13 +168,13 @@ def test_s11_b(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.b, state)
+	node = hsm_handle_event(s0.s1.s11, EventB(), state)
 	assert node is s0.s1.s11
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(Event.b, state),
+			call.s1_run(EventB(), state),
 			call.s11_exit(state),
 			call.s11_entry(state),
 		)
@@ -196,13 +208,13 @@ def test_s11_c(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.c, state)
+	node = hsm_handle_event(s0.s1.s11, EventC(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(Event.c, state),
+			call.s1_run(EventC(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 			call.s2_entry(state),
@@ -236,13 +248,13 @@ def test_s11_d(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.d, state)
+	node = hsm_handle_event(s0.s1.s11, EventD(), state)
 	assert node is s0
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(Event.d, state),
+			call.s1_run(EventD(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 		)
@@ -271,13 +283,13 @@ def test_s11_e(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.e, state)
+	node = hsm_handle_event(s0.s1.s11, EventE(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(Event.e, state),
+			call.s0_run(EventE(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 			call.s2_entry(state),
@@ -308,13 +320,13 @@ def test_s11_f(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.f, state)
+	node = hsm_handle_event(s0.s1.s11, EventF(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(Event.f, state),
+			call.s1_run(EventF(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 			call.s2_entry(state),
@@ -348,13 +360,13 @@ def test_s11_g(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.g, state)
+	node = hsm_handle_event(s0.s1.s11, EventG(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s11_run(Event.g, state),
+			call.s11_run(EventG(), state),
 			call.s11_exit(state),
 			call.s1_exit(state),
 			call.s2_entry(state),
@@ -388,7 +400,7 @@ def test_s11_h(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s1.s11, Event.h, state)
+	node = hsm_handle_event(s0.s1.s11, EventH(), state)
 	assert node is s0.s1.s11
 	assert state.foo == foo
 
@@ -423,7 +435,7 @@ def test_s211_a(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.a, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventA(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == foo
 
@@ -458,13 +470,13 @@ def test_s211_b(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.b, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventB(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(Event.b, state),
+			call.s21_run(EventB(), state),
 			call.s211_exit(state),
 			call.s211_entry(state),
 		)
@@ -498,13 +510,13 @@ def test_s211_c(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.c, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventC(), state)
 	assert node is s0.s1.s11
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(Event.c, state),
+			call.s2_run(EventC(), state),
 			call.s211_exit(state),
 			call.s21_exit(state),
 			call.s2_exit(state),
@@ -538,13 +550,13 @@ def test_s211_d(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.d, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventD(), state)
 	assert node is s0.s2.s21
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s211_run(Event.d, state),
+			call.s211_run(EventD(), state),
 			call.s211_exit(state),
 		)
 	)
@@ -578,13 +590,13 @@ def test_s211_e(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.e, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventE(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(Event.e, state),
+			call.s0_run(EventE(), state),
 			call.s211_exit(state),
 			call.s21_exit(state),
 			call.s2_exit(state),
@@ -618,13 +630,13 @@ def test_211_f(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.f, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventF(), state)
 	assert node is s0.s1.s11
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(Event.f, state),
+			call.s2_run(EventF(), state),
 			call.s211_exit(state),
 			call.s21_exit(state),
 			call.s2_exit(state),
@@ -658,13 +670,13 @@ def test_211_g(foo: int) -> None:
 
 	state = State(foo=foo)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.g, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventG(), state)
 	assert node is s0
 	assert state.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s211_run(Event.g, state),
+			call.s211_run(EventG(), state),
 			call.s211_exit(state),
 			call.s21_exit(state),
 			call.s2_exit(state),
@@ -697,13 +709,13 @@ def test_211_h_foo_0() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventH(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 1
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(Event.h, state),
+			call.s21_run(EventH(), state),
 			call.s211_exit(state),
 			call.s21_exit(state),
 			call.s21_entry(state),
@@ -735,11 +747,11 @@ def test_211_h_foo_1() -> None:
 
 	state = State(foo=1)
 
-	node = hsm_handle_event(s0.s2.s21.s211, Event.h, state)
+	node = hsm_handle_event(s0.s2.s21.s211, EventH(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 1
 
-	mock.assert_has_calls((call.s21_run(Event.h, state),))
+	mock.assert_has_calls((call.s21_run(EventH(), state),))
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -765,7 +777,7 @@ def test_211_h_foo_1() -> None:
 	mock.s211_exit.assert_not_called()
 
 
-@pytest.mark.parametrize("event", set(Event) - {Event.b, Event.c, Event.e, Event.f, Event.h})
+@pytest.mark.parametrize("event", (EventA(), EventD(), EventG()))
 def test_s21_unhandled(event: Event) -> None:
 	"""Some events are unhandled."""
 
@@ -807,13 +819,13 @@ def test_s21_b() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21, Event.b, state)
+	node = hsm_handle_event(s0.s2.s21, EventB(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(Event.b, state),
+			call.s21_run(EventB(), state),
 			call.s211_entry(state),
 		)
 	)
@@ -824,13 +836,13 @@ def test_s21_c() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21, Event.c, state)
+	node = hsm_handle_event(s0.s2.s21, EventC(), state)
 	assert node is s0.s1.s11
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(Event.c, state),
+			call.s2_run(EventC(), state),
 			call.s21_exit(state),
 			call.s2_exit(state),
 			call.s1_entry(state),
@@ -844,13 +856,13 @@ def test_s21_e() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21, Event.e, state)
+	node = hsm_handle_event(s0.s2.s21, EventE(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(Event.e, state),
+			call.s0_run(EventE(), state),
 			call.s21_exit(state),
 			call.s2_exit(state),
 			call.s2_entry(state),
@@ -865,13 +877,13 @@ def test_s21_f() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21, Event.f, state)
+	node = hsm_handle_event(s0.s2.s21, EventF(), state)
 	assert node is s0.s1.s11
 	assert state.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(Event.f, state),
+			call.s2_run(EventF(), state),
 			call.s21_exit(state),
 			call.s2_exit(state),
 			call.s1_entry(state),
@@ -885,13 +897,13 @@ def test_s21_h_foo_0() -> None:
 
 	state = State(foo=0)
 
-	node = hsm_handle_event(s0.s2.s21, Event.h, state)
+	node = hsm_handle_event(s0.s2.s21, EventH(), state)
 	assert node is s0.s2.s21.s211
 	assert state.foo == 1
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(Event.h, state),
+			call.s21_run(EventH(), state),
 			call.s21_exit(state),
 			call.s21_entry(state),
 			call.s211_entry(state),
@@ -904,8 +916,8 @@ def test_s21_h_foo_1() -> None:
 
 	state = State(foo=1)
 
-	node = hsm_handle_event(s0.s2.s21, Event.h, state)
+	node = hsm_handle_event(s0.s2.s21, EventH(), state)
 	assert node is s0.s2.s21
 	assert state.foo == 1
 
-	mock.assert_has_calls((call.s21_run(Event.h, state),))
+	mock.assert_has_calls((call.s21_run(EventH(), state),))

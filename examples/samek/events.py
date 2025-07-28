@@ -1,16 +1,31 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from enum import IntEnum, unique
+from typing import NamedTuple
 
 
-@unique
-class Event(IntEnum):
-	a = 0
-	b = 1
-	c = 2
-	d = 3
-	e = 4
-	f = 5
-	g = 6
-	h = 7
+class EventA(NamedTuple): ...
+
+
+class EventB(NamedTuple): ...
+
+
+class EventC(NamedTuple): ...
+
+
+class EventD(NamedTuple): ...
+
+
+class EventE(NamedTuple): ...
+
+
+class EventF(NamedTuple): ...
+
+
+class EventG(NamedTuple): ...
+
+
+class EventH(NamedTuple): ...
+
+
+type Event = EventA | EventB | EventC | EventD | EventE | EventF | EventG | EventH

@@ -33,7 +33,7 @@ class Node(Protocol[TEvent, TState], metaclass=NodeMeta):
 
 	_event_handlers: tuple[
 		tuple[
-			TEvent | Type[TEvent],
+			Type[TEvent],
 			Callable[[TEvent, TState | None], Type["Node[TEvent, TState]"] | HSMStatus],
 		],
 		...,
@@ -45,8 +45,8 @@ def _hsm_get_event_handler(
 	node: Type[Node[TEvent, TState]],
 	event: TEvent,
 ) -> Callable[[TEvent, TState | None], Type[Node[TEvent, TState]] | HSMStatus] | None:
-	for e, handler in node._event_handlers:
-		if e is type(event) or e == event:
+	for eventT, handler in node._event_handlers:
+		if isinstance(event, eventT):
 			return handler
 
 	return None

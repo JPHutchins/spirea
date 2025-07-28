@@ -12,7 +12,17 @@ import examples.samek.s2 as s2_
 import examples.samek.s11 as s11_
 import examples.samek.s21 as s21_
 import examples.samek.s211 as s211_
-from examples.samek.events import Event
+from examples.samek.events import (
+	Event,
+	EventA,
+	EventB,
+	EventC,
+	EventD,
+	EventE,
+	EventF,
+	EventG,
+	EventH,
+)
 from examples.samek.state import State
 from spirea.sync import HSMStatus, Node
 
@@ -27,7 +37,7 @@ class s0(Node[Event, State]):
 		return s0.s1
 
 	class EventHandlers:
-		e: Callable[[L[Event.e], State | None], Type["s0.s2.s21.s211"]] = (
+		e: Callable[[EventE, State | None], Type["s0.s2.s21.s211"]] = (
 			lambda e, s: (mock.s0_run(e, s) and s0_.run_e(e, s)) or s0.s2.s21.s211  # type: ignore[func-returns-value]
 		)
 
@@ -44,20 +54,20 @@ class s0(Node[Event, State]):
 			return s0.s1.s11
 
 		class EventHandlers:
-			a: Callable[[L[Event.a], State | None], L[HSMStatus.SELF_TRANSITION]] = (
+			a: Callable[[EventA, State | None], L[HSMStatus.SELF_TRANSITION]] = (
 				lambda e, s: (mock.s1_run(e, s) and s1_.run_a(e, s))  # type: ignore[func-returns-value]
 				or HSMStatus.SELF_TRANSITION
 			)
-			b: Callable[[L[Event.b], State | None], Type["s0.s1.s11"]] = (
+			b: Callable[[EventB, State | None], Type["s0.s1.s11"]] = (
 				lambda e, s: (mock.s1_run(e, s) and s1_.run_b(e, s)) or s0.s1.s11  # type: ignore[func-returns-value]
 			)
-			c: Callable[[L[Event.c], State | None], Type["s0.s2"]] = (
+			c: Callable[[EventC, State | None], Type["s0.s2"]] = (
 				lambda e, s: (mock.s1_run(e, s) and s1_.run_c(e, s)) or s0.s2  # type: ignore[func-returns-value]
 			)
-			d: Callable[[L[Event.d], State | None], Type["s0"]] = (
+			d: Callable[[EventD, State | None], Type["s0"]] = (
 				lambda e, s: (mock.s1_run(e, s) and s1_.run_d(e, s)) or s0  # type: ignore[func-returns-value]
 			)
-			f: Callable[[L[Event.f], State | None], Type["s0.s2.s21.s211"]] = (
+			f: Callable[[EventF, State | None], Type["s0.s2.s21.s211"]] = (
 				lambda e, s: (mock.s1_run(e, s) and s1_.run_f(e, s)) or s0.s2.s21.s211  # type: ignore[func-returns-value]
 			)
 
@@ -74,7 +84,7 @@ class s0(Node[Event, State]):
 				return s0.s1.s11
 
 			class EventHandlers:
-				g: Callable[[L[Event.g], State | None], Type["s0.s2.s21.s211"]] = (
+				g: Callable[[EventG, State | None], Type["s0.s2.s21.s211"]] = (
 					lambda e, s: (mock.s11_run(e, s) and s11_.run_g(e, s))  # type: ignore[func-returns-value]
 					or s0.s2.s21.s211
 				)
@@ -94,10 +104,10 @@ class s0(Node[Event, State]):
 			return s0.s2.s21
 
 		class EventHandlers:
-			c: Callable[[L[Event.c], State | None], Type["s0.s1"]] = (
+			c: Callable[[EventC, State | None], Type["s0.s1"]] = (
 				lambda e, s: (mock.s2_run(e, s) and s2_.run_c(e, s)) or s0.s1  # type: ignore[func-returns-value]
 			)
-			f: Callable[[L[Event.f], State | None], Type["s0.s1.s11"]] = (
+			f: Callable[[EventF, State | None], Type["s0.s1.s11"]] = (
 				lambda e, s: (mock.s2_run(e, s) and s2_.run_f(e, s)) or s0.s1.s11  # type: ignore[func-returns-value]
 			)
 
@@ -114,12 +124,12 @@ class s0(Node[Event, State]):
 				return s0.s2.s21.s211
 
 			class EventHandlers:
-				b: Callable[[L[Event.b], State | None], Type["s0.s2.s21.s211"]] = (
+				b: Callable[[EventB, State | None], Type["s0.s2.s21.s211"]] = (
 					lambda e, s: (mock.s21_run(e, s) and s21_.run_b(e, s))  # type: ignore[func-returns-value]
 					or s0.s2.s21.s211
 				)
 				h: Callable[
-					[L[Event.h], State],
+					[EventH, State],
 					L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION],
 				] = lambda e, s: (mock.s21_run(e, s) and None) or s21_.run_h(e, s)
 
@@ -136,16 +146,15 @@ class s0(Node[Event, State]):
 					return s0.s2.s21.s211
 
 				class EventHandlers:
-					d: Callable[[L[Event.d], State | None], Type["s0.s2.s21"]] = (
+					d: Callable[[EventD, State | None], Type["s0.s2.s21"]] = (
 						lambda e, s: (mock.s211_run(e, s) and s211_.run_d(e, s))  # type: ignore[func-returns-value]
 						or s0.s2.s21
 					)
-					g: Callable[[L[Event.g], State | None], Type["s0"]] = (
+					g: Callable[[EventG, State | None], Type["s0"]] = (
 						lambda e, s: (mock.s211_run(e, s) and s211_.run_g(e, s)) or s0  # type: ignore[func-returns-value]
 					)
 
 				@staticmethod
 				def exit(state: State | None = None) -> None:
 					mock.s211_exit(state)
-					s211_.exit(state)
 					s211_.exit(state)

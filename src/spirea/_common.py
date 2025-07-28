@@ -1,8 +1,8 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from enum import IntEnum
-from typing import Any, Callable, Final, Type, TypeVar, _ProtocolMeta
+from enum import Enum, unique
+from typing import Any, Callable, Final, NamedTuple, Type, TypeVar, _ProtocolMeta, final
 
 from typing_extensions import TypeIs
 
@@ -11,10 +11,21 @@ TState = TypeVar("TState")
 TNode = TypeVar("TNode")
 
 
-class HSMStatus(IntEnum):
-	NO_TRANSITION = -2_147_483_648
-	SELF_TRANSITION = -2_147_483_647
-	EVENT_UNHANDLED = -2_147_483_646
+class NoTransition(NamedTuple): ...
+
+
+class SelfTransition(NamedTuple): ...
+
+
+class EventUnhandled(NamedTuple): ...
+
+
+@final
+@unique
+class HSMStatus(Enum):
+	NO_TRANSITION = NoTransition
+	SELF_TRANSITION = SelfTransition
+	EVENT_UNHANDLED = EventUnhandled
 
 
 def is_hsm_status(node: Type[TNode] | HSMStatus) -> TypeIs[HSMStatus]:
@@ -22,7 +33,7 @@ def is_hsm_status(node: Type[TNode] | HSMStatus) -> TypeIs[HSMStatus]:
 
 
 def _is_hsm_node(cls: Any) -> TypeIs[Type["NodeMeta"]]:
-	return getattr(cls, "__hsm_node", False)
+	return hasattr(cls, "__hsm_node")
 
 
 class _NodeMixin:
@@ -57,7 +68,7 @@ class _NodeMeta(type, _NodeMixin):
 		event_handlers: Final[  # type: ignore[valid-type]
 			list[
 				tuple[
-					TEvent | Type[TEvent],
+					Type[TEvent],
 					Callable[
 						[TEvent, TState | None],
 						type | HSMStatus,
@@ -68,11 +79,8 @@ class _NodeMeta(type, _NodeMixin):
 		for name, value in node_cls.EventHandlers.__annotations__.items():
 			event_handlers.append(
 				(
-					# It is possible that the value is an enum or a union, so we
-					# need to extract the first type, if it exists.
-					value.__args__[0].__args__[0]
-					if hasattr(value.__args__[0], "__args__")
-					else value.__args__[0],
+					# Map type -> handler
+					value.__args__[0],
 					getattr(node_cls.EventHandlers, name),
 				)
 			)
@@ -82,8 +90,8 @@ class _NodeMeta(type, _NodeMixin):
 		return node_cls
 
 
-class NodeMeta(_NodeMeta, _ProtocolMeta):
-	pass
+@final
+class NodeMeta(_NodeMeta, _ProtocolMeta): ...
 
 
 def hsm_get_path_to_root(
@@ -105,7 +113,4 @@ def hsm_get_lca(
 		if node in path2:
 			return node
 
-	return None
-	return None
-	return None
 	return None

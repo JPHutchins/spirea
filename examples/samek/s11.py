@@ -1,9 +1,8 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from typing import Literal as L
 
-from examples.samek.events import Event
+from examples.samek.events import EventG
 from examples.samek.state import State
 
 
@@ -11,7 +10,7 @@ def entry(state: State | None = None) -> None:
 	print("        s11 entry")
 
 
-def run_g(event: L[Event.g], state: State | None) -> None:
+def run_g(event: EventG, state: State | None) -> None:
 	print("        s11 run g")
 
 
