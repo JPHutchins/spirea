@@ -43,6 +43,10 @@ class Node(Protocol[TEvent, TContext, TEntryContexts], metaclass=NodeMeta):
 
 	_context: ClassVar[Any]
 
+	@classmethod
+	def context(cls) -> TContext:
+		return cls._context
+
 
 def _hsm_get_event_handler(
 	node: Type[Node[TEvent, TContext, Any]],
@@ -79,7 +83,7 @@ def hsm_handle_entries(
 def hsm_handle_event(
 	node: Type[Node[TEvent, TContext, Any]],
 	event: TEvent,
-) -> Type[Node[TEvent, TContext, Any]]:
+) -> Type[Node[Any, Any, Any]]:
 	"""
 	Handle an event for the hierarchical state machine.
 

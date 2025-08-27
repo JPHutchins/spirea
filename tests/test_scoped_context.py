@@ -1,7 +1,7 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from typing import Callable, NamedTuple, Type
+from typing import Callable, ClassVar, NamedTuple, Type
 from unittest.mock import Mock
 
 from spirea.sync import Node, hsm_handle_entries, hsm_handle_event
@@ -98,6 +98,8 @@ def connect_handler(event: Connect, context: BaseState) -> Type["Connected"]:
 
 
 class Disconnected(Node[Event, BaseState, ConnectedState | None]):
+	_context: ClassVar[BaseState]
+
 	@staticmethod
 	def entry(context: None | ConnectedState) -> tuple[type["Disconnected"], BaseState]:
 		new_context = BaseState(get_session_id_mock())
@@ -212,15 +214,15 @@ def test_hierarchical_scoped_context() -> None:
 	get_session_id_mock.return_value = "session_123"
 	disconnected = hsm_handle_entries(disconnected)  # type: ignore[assignment]
 	assert disconnected is Disconnected
-	assert disconnected._context.session_id == "session_123"
+	assert disconnected.context().session_id == "session_123"
 
 	# Start disconnected
 	connected = hsm_handle_event(disconnected, Connect("localhost", 8080))
 	assert connected is Connected
-	assert connected._context.base.session_id == "session_123"
-	assert connected._context.transport is transport_mock
-	assert connected._context.connection_time == 123.456
-	assert not hasattr(connected._context, "user_key")
+	assert connected.context().base.session_id == "session_123"
+	assert connected.context().transport is transport_mock
+	assert connected.context().connection_time == 123.456
+	assert not hasattr(connected.context(), "user_key")
 
 	transport_mock.connect.assert_called_once_with("localhost", 8080)
 	disconnected_exit_mock.assert_called_once()
@@ -232,12 +234,12 @@ def test_hierarchical_scoped_context() -> None:
 	connected_entry_mock.reset_mock()
 
 	# Login as user - transitions to nested User context
-	user = hsm_handle_event(connected, LoginUser("alice", "password123"))  # type: ignore[assignment]
+	user = hsm_handle_event(connected, LoginUser("alice", "password123"))
 	assert user is Connected.User
-	assert user._context.connected.base.session_id == "session_123"
-	assert user._context.connected.transport is transport_mock
-	assert user._context.user_key == "user_key_abc123"
-	assert user._context.permissions == ["read", "write"]
+	assert user.context().connected.base.session_id == "session_123"
+	assert user.context().connected.transport is transport_mock
+	assert user.context().user_key == "user_key_abc123"
+	assert user.context().permissions == ["read", "write"]
 
 	auth_service_mock.authenticate_user.assert_called_once_with("alice", "password123")
 	user_entry_mock.assert_called_once()
@@ -248,7 +250,7 @@ def test_hierarchical_scoped_context() -> None:
 	user_entry_mock.reset_mock()
 
 	# User accesses resource - should have access to transport via inherited context
-	user = hsm_handle_event(user, AccessResource("user_document"))  # type: ignore[assignment]
+	user = hsm_handle_event(user, AccessResource("user_document"))
 	assert user is Connected.User
 	user_resource_mock.access.assert_called_once_with(
 		"user_document", "user_key_abc123", transport_mock
@@ -260,8 +262,8 @@ def test_hierarchical_scoped_context() -> None:
 	# Logout back to parent Connected state
 	connected = hsm_handle_event(user, Logout())
 	assert connected is Connected
-	assert connected._context.base.session_id == "session_123"
-	assert connected._context.transport is transport_mock
+	assert connected.context().base.session_id == "session_123"
+	assert connected.context().transport is transport_mock
 
 	auth_service_mock.logout.assert_called_once()
 	user_exit_mock.assert_called_once()
@@ -271,13 +273,13 @@ def test_hierarchical_scoped_context() -> None:
 	user_exit_mock.reset_mock()
 
 	# Login as admin - transitions to nested Admin state
-	admin = hsm_handle_event(connected, LoginAdmin("admin", "admin_pass"))  # type: ignore[assignment]
+	admin = hsm_handle_event(connected, LoginAdmin("admin", "admin_pass"))
 	assert admin is Connected.Admin
-	assert_type(admin._context.connected.base.session_id, str)
-	assert admin._context.connected.base.session_id == "session_123"
-	assert admin._context.connected.transport is transport_mock
-	assert admin._context.admin_key == "admin_key_xyz789"
-	assert admin._context.permissions == ["read", "write", "admin", "delete"]
+	assert_type(admin.context().connected.base.session_id, str)  # type: ignore[assert-type]
+	assert admin.context().connected.base.session_id == "session_123"
+	assert admin.context().connected.transport is transport_mock
+	assert admin.context().admin_key == "admin_key_xyz789"
+	assert admin.context().permissions == ["read", "write", "admin", "delete"]
 
 	auth_service_mock.authenticate_admin.assert_called_once_with("admin", "admin_pass")
 	admin_entry_mock.assert_called_once()
@@ -287,7 +289,7 @@ def test_hierarchical_scoped_context() -> None:
 	admin_entry_mock.reset_mock()
 
 	# Admin accesses resource - should have access to transport via inherited state
-	admin = hsm_handle_event(admin, AccessResource("system_config"))  # type: ignore[assignment]
+	admin = hsm_handle_event(admin, AccessResource("system_config"))
 	assert admin is Connected.Admin
 	admin_resource_mock.access.assert_called_once_with(
 		"system_config", "admin_key_xyz789", transport_mock
@@ -300,7 +302,7 @@ def test_hierarchical_scoped_context() -> None:
 	# Test that disconnect from nested state works - should bubble up to parent
 	get_session_id_mock.return_value = "session_456"
 	disconnected = hsm_handle_event(admin, Disconnect())
-	assert disconnected._context.session_id == "session_456"
+	assert disconnected.context().session_id == "session_456"
 
 	transport_mock.disconnect.assert_called_once()
 	admin_exit_mock.assert_called_once()
@@ -363,41 +365,41 @@ def test_object_identity_preservation() -> None:
 	disconnected = Disconnected
 
 	# Verify the disconnected node has the base state
-	assert disconnected._context is base_context
+	assert disconnected.context() is base_context
 
 	# Transition to connected state
 	connected = hsm_handle_event(disconnected, Connect("localhost", 8080))
 
 	# Verify that the base state is preserved by object identity in the connected state
-	assert connected._context.base is base_context
-	assert connected._context.base is disconnected._context  # Same object!
+	assert connected.context().base is base_context
+	assert connected.context().base is disconnected.context()  # Same object!
 
 	# Transition to user state
 	user = hsm_handle_event(connected, LoginUser("test_user", "password"))
 
 	# Verify object identity is preserved through the entire hierarchy
-	assert user._context.connected.base is base_context
-	assert user._context.connected.base is disconnected._context  # Same object!
-	assert user._context.connected.base is connected._context.base  # Same object!
+	assert user.context().connected.base is base_context
+	assert user.context().connected.base is disconnected.context()  # Same object!
+	assert user.context().connected.base is connected.context().base  # Same object!
 
 	# Transition to admin state from connected
 	admin = hsm_handle_event(connected, LoginAdmin("admin", "admin_pass"))
 
 	# Verify object identity is preserved in admin hierarchy too
-	assert admin._context.connected.base is base_context
-	assert admin._context.connected.base is disconnected._context  # Same object!
-	assert admin._context.connected.base is connected._context.base  # Same object!
-	assert admin._context.connected.base is user._context.connected.base  # Same object!
+	assert admin.context().connected.base is base_context
+	assert admin.context().connected.base is disconnected.context()  # Same object!
+	assert admin.context().connected.base is connected.context().base  # Same object!
+	assert admin.context().connected.base is user.context().connected.base  # Same object!
 
 	# and of course that means that the value is preserved
-	assert admin._context.connected.base.session_id == "identity_test_123"
+	assert admin.context().connected.base.session_id == "identity_test_123"
 
 	# Transition back to disconnected from admin
 	disconnected_again = hsm_handle_event(admin, Disconnect())
 
 	# Verify that a new state instance is created
-	assert disconnected_again._context is not base_context
-	assert disconnected_again._context == disconnected._context
+	assert disconnected_again.context() is not base_context
+	assert disconnected_again.context() == disconnected.context()
 
 	# The key insight: throughout the entire HSM lifecycle, the same BaseState object
 	# is preserved by reference in all composed state structures that belong to
@@ -428,48 +430,48 @@ def test_context_machine_cycles() -> None:
 
 	get_session_id_mock.return_value = "cycle_test_456"
 	current = Disconnected
-	current = hsm_handle_entries(current)
+	current = hsm_handle_entries(current)  # type: ignore[assignment]
 	assert current is Disconnected
-	assert current._context.session_id == "cycle_test_456"
+	assert current.context().session_id == "cycle_test_456"
 
 	# Perform multiple connect/disconnect cycles
 	for _ in range(3):
-		original_base = current._context
+		original_base = current.context()
 
 		# Connect
 		current = hsm_handle_event(current, Connect("localhost", 8080))
 		assert current is Connected
-		assert current._context.base is original_base
+		assert current.context().base is original_base
 
 		# Login as user
 		current = hsm_handle_event(current, LoginUser("user", "pass"))
 		assert current is Connected.User
-		assert current._context.connected.base is original_base
+		assert current.context().connected.base is original_base
 
 		# Access resource
 		current = hsm_handle_event(current, AccessResource("doc"))
 		assert current is Connected.User
-		assert current._context.connected.base is original_base
+		assert current.context().connected.base is original_base
 
 		# Logout to connected
 		current = hsm_handle_event(current, Logout())
 		assert current is Connected
-		assert current._context.base is original_base
+		assert current.context().base is original_base
 
 		# Login as admin
 		current = hsm_handle_event(current, LoginAdmin("admin", "adminpass"))
 		assert current is Connected.Admin
-		assert current._context.connected.base is original_base
+		assert current.context().connected.base is original_base
 
 		# Access admin resource
 		current = hsm_handle_event(current, AccessResource("sysconfig"))
 		assert current is Connected.Admin
-		assert current._context.connected.base is original_base
+		assert current.context().connected.base is original_base
 
 		# Disconnect from admin (should go back to disconnected)
 		current = hsm_handle_event(current, Disconnect())
 		assert current is Disconnected
-		assert current._context is not original_base
+		assert current.context() is not original_base
 
 		# Verify we're back where we started and can cycle again
-		assert current._context.session_id == "cycle_test_456"
+		assert current.context().session_id == "cycle_test_456"
