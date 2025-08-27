@@ -1,9 +1,8 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from typing import Callable, ClassVar  # noqa: I001
+from typing import Callable, Type
 from typing import Literal as L
-from typing import Type
 from unittest.mock import Mock
 
 import examples.samek.s0 as s0_
@@ -30,11 +29,9 @@ mock = Mock()
 
 
 class s0(Node[Event, Context, Context]):
-	_context: ClassVar[Context]
-
 	@staticmethod
 	def entry(context: Context) -> tuple[type["s0.s1"], Context]:
-		s0._context = context
+		s0.set_context(context)
 		mock.s0_entry(context)
 		s0_.entry(context)
 		return s0.s1, context
@@ -52,7 +49,7 @@ class s0(Node[Event, Context, Context]):
 	class s1(Node[Event, Context, Context]):
 		@staticmethod
 		def entry(context: Context) -> tuple[Type["s0.s1.s11"], Context]:
-			s0.s1._context = context
+			s0.s1.set_context(context)
 			mock.s1_entry(context)
 			s1_.entry(context)
 			return s0.s1.s11, context
@@ -83,7 +80,7 @@ class s0(Node[Event, Context, Context]):
 		class s11(Node[Event, Context, Context]):
 			@staticmethod
 			def entry(context: Context) -> tuple[Type["s0.s1.s11"], Context]:
-				s0.s1.s11._context = context
+				s0.s1.s11.set_context(context)
 				mock.s11_entry(context)
 				s11_.entry(context)
 				return s0.s1.s11, context
@@ -102,7 +99,7 @@ class s0(Node[Event, Context, Context]):
 	class s2(Node[Event, Context, Context]):
 		@staticmethod
 		def entry(context: Context) -> tuple[Type["s0.s2.s21"], Context]:
-			s0.s2._context = context
+			s0.s2.set_context(context)
 			mock.s2_entry(context)
 			s2_.entry(context)
 			return s0.s2.s21, context
@@ -123,7 +120,7 @@ class s0(Node[Event, Context, Context]):
 		class s21(Node[Event, Context, Context]):
 			@staticmethod
 			def entry(context: Context) -> tuple[Type["s0.s2.s21.s211"], Context]:
-				s0.s2.s21._context = context
+				s0.s2.s21.set_context(context)
 				mock.s21_entry(context)
 				s21_.entry(context)
 				return s0.s2.s21.s211, context
@@ -146,7 +143,7 @@ class s0(Node[Event, Context, Context]):
 			class s211(Node[Event, Context, Context]):
 				@staticmethod
 				def entry(context: Context) -> tuple[Type["s0.s2.s21.s211"], Context]:
-					s0.s2.s21.s211._context = context
+					s0.s2.s21.s211.set_context(context)
 					mock.s211_entry(context)
 					s211_.entry(context)
 					return s0.s2.s21.s211, context

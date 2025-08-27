@@ -47,6 +47,10 @@ class Node(Protocol[TEvent, TContext, TEntryContexts], metaclass=NodeMeta):
 	def context(cls) -> TContext:
 		return cls._context
 
+	@classmethod
+	def set_context(cls, context: TContext) -> None:
+		cls._context = context
+
 
 def _hsm_get_event_handler(
 	node: Type[Node[TEvent, TContext, Any]],
