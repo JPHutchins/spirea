@@ -3,20 +3,20 @@
 
 
 from examples.samek.events import EventG
-from examples.samek.state import State
+from examples.samek.state import Context
 
 
-def entry(state: State) -> None:
+def entry(context: Context) -> None:
 	print("        s11 entry")
 
 
-def run_g(event: EventG, state: State) -> None:
+def run_g(event: EventG, context: Context) -> None:
 	print("        s11 run g")
 
 
-def exit(state: State) -> None:
-	if state.foo == 1:
-		state.foo = 0
-		print(f"        s11 exit {state.foo=}")
+def exit(context: Context) -> None:
+	if context.foo == 1:
+		context.foo = 0
+		print(f"        s11 exit {context.foo=}")
 	else:
 		print("        s11 exit")

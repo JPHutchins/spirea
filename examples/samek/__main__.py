@@ -1,7 +1,7 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from typing import Final
+from typing import Any, Final
 
 import readchar
 
@@ -17,8 +17,14 @@ from examples.samek.events import (
 	EventH,
 )
 from examples.samek.hsm import s0
-from examples.samek.state import State
+from examples.samek.state import Context
 from spirea.sync import Node, hsm_handle_entries, hsm_handle_event
+
+
+def init_context(context: Context) -> None:
+	"""This would normally be done by entry functions, but we bypass for testing."""
+	s0._context = context
+
 
 MAP_CHAR_TO_EVENT: Final[dict[str, Event]] = {
 	"a": EventA(),
@@ -32,7 +38,8 @@ MAP_CHAR_TO_EVENT: Final[dict[str, Event]] = {
 }
 
 
-def print_node_and_state(node: type[Node[Event, State]], state: State) -> None:
+def print_node_and_context(node: type[Node[Event, Context, Any]], context: Context) -> None:
+	indent = ""
 	if node is s0:
 		indent = ""
 	elif node is s0.s1 or node is s0.s2:
@@ -42,14 +49,15 @@ def print_node_and_state(node: type[Node[Event, State]], state: State) -> None:
 	elif node is s0.s2.s21.s211:
 		indent = "------------"
 
-	print(indent + node.__name__ + " " + str(state))
+	print(indent + node.__name__ + " " + str(context))
 
 
 def app() -> None:
-	state = State(foo=0)
-	node = hsm_handle_entries(s0, state)
+	context = Context(foo=0)
+	init_context(context)
+	node = hsm_handle_entries(s0)
 
-	print_node_and_state(node, state)
+	print_node_and_context(node, context)
 
 	while True:
 		try:
@@ -58,9 +66,9 @@ def app() -> None:
 		except KeyError:
 			continue
 
-		node = hsm_handle_event(node, event, state)
+		node = hsm_handle_event(node, event)
 
-		print_node_and_state(node, state)
+		print_node_and_context(node, context)
 
 
 if __name__ == "__main__":

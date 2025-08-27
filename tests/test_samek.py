@@ -17,24 +17,24 @@ from examples.samek.events import (
 	EventH,
 )
 from examples.samek.hsm import mock, s0
-from examples.samek.state import State
+from examples.samek.state import Context
 from spirea.sync import hsm_handle_entries, hsm_handle_event
 
 
-def init_state(state: State) -> None:
+def init_context(context: Context) -> None:
 	"""This would normally be done by entry functions, but we bypass for testing."""
-	s0._state = state
-	s0.s1._state = state
-	s0.s1.s11._state = state
-	s0.s2._state = state
-	s0.s2.s21._state = state
-	s0.s2.s21.s211._state = state
+	s0._context = context
+	s0.s1._context = context
+	s0.s1.s11._context = context
+	s0.s2._context = context
+	s0.s2.s21._context = context
+	s0.s2.s21.s211._context = context
 
 
 def test_transitions_run() -> None:
 	# Initialize the state machine with initial state
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 	node = hsm_handle_entries(s0)
 	assert node is s0.s1.s11
 
@@ -46,14 +46,14 @@ def test_transitions_run() -> None:
 
 	node = hsm_handle_event(node, EventH())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 1
+	assert context.foo == 1
 
 	node = hsm_handle_event(node, EventG())
 	assert node is s0
 
 	node = hsm_handle_event(node, EventG())
 	assert node is s0
-	assert state.foo == 1
+	assert context.foo == 1
 
 
 @pytest.mark.parametrize(
@@ -64,12 +64,12 @@ def test_s0_unhandled(event: Event) -> None:
 
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0, event)
 	assert node is s0
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -99,19 +99,19 @@ def test_s0_unhandled(event: Event) -> None:
 def test_s0_e() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0, EventE())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(EventE(), state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s0_run(EventE(), context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -140,20 +140,20 @@ def test_s0_e() -> None:
 def test_s11_a(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventA())
 	assert node is s0.s1.s11
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(EventA(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
-			call.s1_entry(state),
-			call.s11_entry(state),
+			call.s1_run(EventA(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
+			call.s1_entry(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -180,18 +180,18 @@ def test_s11_a(foo: int) -> None:
 def test_s11_b(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventB())
 	assert node is s0.s1.s11
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(EventB(), state),
-			call.s11_exit(state),
-			call.s11_entry(state),
+			call.s1_run(EventB(), context),
+			call.s11_exit(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -221,21 +221,21 @@ def test_s11_b(foo: int) -> None:
 def test_s11_c(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventC())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(EventC(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s1_run(EventC(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -262,18 +262,18 @@ def test_s11_c(foo: int) -> None:
 def test_s11_d(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventD())
 	assert node is s0
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(EventD(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
+			call.s1_run(EventD(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
 		)
 	)
 
@@ -298,21 +298,21 @@ def test_s11_d(foo: int) -> None:
 def test_s11_e(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventE())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(EventE(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s0_run(EventE(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -336,21 +336,21 @@ def test_s11_e(foo: int) -> None:
 def test_s11_f(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventF())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s1_run(EventF(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s1_run(EventF(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -377,21 +377,21 @@ def test_s11_f(foo: int) -> None:
 def test_s11_g(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventG())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s11_run(EventG(), state),
-			call.s11_exit(state),
-			call.s1_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s11_run(EventG(), context),
+			call.s11_exit(context),
+			call.s1_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -418,12 +418,12 @@ def test_s11_g(foo: int) -> None:
 def test_s11_h(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s1.s11, EventH())
 	assert node is s0.s1.s11
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -454,12 +454,12 @@ def test_s11_h(foo: int) -> None:
 def test_s211_a(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventA())
 	assert node is s0.s2.s21.s211
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -490,18 +490,18 @@ def test_s211_a(foo: int) -> None:
 def test_s211_b(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventB())
 	assert node is s0.s2.s21.s211
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(EventB(), state),
-			call.s211_exit(state),
-			call.s211_entry(state),
+			call.s21_run(EventB(), context),
+			call.s211_exit(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -531,21 +531,21 @@ def test_s211_b(foo: int) -> None:
 def test_s211_c(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventC())
 	assert node is s0.s1.s11
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(EventC(), state),
-			call.s211_exit(state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s1_entry(state),
-			call.s11_entry(state),
+			call.s2_run(EventC(), context),
+			call.s211_exit(context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s1_entry(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -572,17 +572,17 @@ def test_s211_c(foo: int) -> None:
 def test_s211_d(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventD())
 	assert node is s0.s2.s21
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s211_run(EventD(), state),
-			call.s211_exit(state),
+			call.s211_run(EventD(), context),
+			call.s211_exit(context),
 		)
 	)
 
@@ -613,22 +613,22 @@ def test_s211_d(foo: int) -> None:
 def test_s211_e(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventE())
 	assert node is s0.s2.s21.s211
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(EventE(), state),
-			call.s211_exit(state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s0_run(EventE(), context),
+			call.s211_exit(context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -654,21 +654,21 @@ def test_s211_e(foo: int) -> None:
 def test_211_f(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventF())
 	assert node is s0.s1.s11
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(EventF(), state),
-			call.s211_exit(state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s1_entry(state),
-			call.s11_entry(state),
+			call.s2_run(EventF(), context),
+			call.s211_exit(context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s1_entry(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -695,19 +695,19 @@ def test_211_f(foo: int) -> None:
 def test_211_g(foo: int) -> None:
 	mock.reset_mock()
 
-	state = State(foo=foo)
-	init_state(state)
+	context = Context(foo=foo)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventG())
 	assert node is s0
-	assert state.foo == foo
+	assert context.foo == foo
 
 	mock.assert_has_calls(
 		(
-			call.s211_run(EventG(), state),
-			call.s211_exit(state),
-			call.s21_exit(state),
-			call.s2_exit(state),
+			call.s211_run(EventG(), context),
+			call.s211_exit(context),
+			call.s21_exit(context),
+			call.s2_exit(context),
 		)
 	)
 
@@ -735,20 +735,20 @@ def test_211_g(foo: int) -> None:
 def test_211_h_foo_0() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventH())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 1
+	assert context.foo == 1
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(EventH(), state),
-			call.s211_exit(state),
-			call.s21_exit(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s21_run(EventH(), context),
+			call.s211_exit(context),
+			call.s21_exit(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -774,14 +774,14 @@ def test_211_h_foo_0() -> None:
 def test_211_h_foo_1() -> None:
 	mock.reset_mock()
 
-	state = State(foo=1)
-	init_state(state)
+	context = Context(foo=1)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21.s211, EventH())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 1
+	assert context.foo == 1
 
-	mock.assert_has_calls((call.s21_run(EventH(), state),))
+	mock.assert_has_calls((call.s21_run(EventH(), context),))
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -813,12 +813,12 @@ def test_s21_unhandled(event: Event) -> None:
 
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0, event)
 	assert node is s0
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.s0_entry.assert_not_called()
 	mock.s0_run.assert_not_called()
@@ -848,17 +848,17 @@ def test_s21_unhandled(event: Event) -> None:
 def test_s21_b() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventB())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(EventB(), state),
-			call.s211_entry(state),
+			call.s21_run(EventB(), context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -866,20 +866,20 @@ def test_s21_b() -> None:
 def test_s21_c() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventC())
 	assert node is s0.s1.s11
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(EventC(), state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s1_entry(state),
-			call.s11_entry(state),
+			call.s2_run(EventC(), context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s1_entry(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -887,21 +887,21 @@ def test_s21_c() -> None:
 def test_s21_e() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventE())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s0_run(EventE(), state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s2_entry(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s0_run(EventE(), context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s2_entry(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -909,20 +909,20 @@ def test_s21_e() -> None:
 def test_s21_f() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventF())
 	assert node is s0.s1.s11
-	assert state.foo == 0
+	assert context.foo == 0
 
 	mock.assert_has_calls(
 		(
-			call.s2_run(EventF(), state),
-			call.s21_exit(state),
-			call.s2_exit(state),
-			call.s1_entry(state),
-			call.s11_entry(state),
+			call.s2_run(EventF(), context),
+			call.s21_exit(context),
+			call.s2_exit(context),
+			call.s1_entry(context),
+			call.s11_entry(context),
 		)
 	)
 
@@ -930,19 +930,19 @@ def test_s21_f() -> None:
 def test_s21_h_foo_0() -> None:
 	mock.reset_mock()
 
-	state = State(foo=0)
-	init_state(state)
+	context = Context(foo=0)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventH())
 	assert node is s0.s2.s21.s211
-	assert state.foo == 1
+	assert context.foo == 1
 
 	mock.assert_has_calls(
 		(
-			call.s21_run(EventH(), state),
-			call.s21_exit(state),
-			call.s21_entry(state),
-			call.s211_entry(state),
+			call.s21_run(EventH(), context),
+			call.s21_exit(context),
+			call.s21_entry(context),
+			call.s211_entry(context),
 		)
 	)
 
@@ -950,11 +950,11 @@ def test_s21_h_foo_0() -> None:
 def test_s21_h_foo_1() -> None:
 	mock.reset_mock()
 
-	state = State(foo=1)
-	init_state(state)
+	context = Context(foo=1)
+	init_context(context)
 
 	node = hsm_handle_event(s0.s2.s21, EventH())
 	assert node is s0.s2.s21
-	assert state.foo == 1
+	assert context.foo == 1
 
-	mock.assert_has_calls((call.s21_run(EventH(), state),))
+	mock.assert_has_calls((call.s21_run(EventH(), context),))

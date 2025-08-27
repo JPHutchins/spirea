@@ -24,8 +24,6 @@ class Fixed(NamedTuple): ...
 type Event = CardIn | Done | Broke | Fixed
 
 
-
-
 # Declare mocks at file scope
 idle_entry_mock = Mock()
 idle_run_mock = Mock()
@@ -40,19 +38,19 @@ broken_run_mock = Mock()
 broken_exit_mock = Mock()
 
 
-def card_in(event: CardIn, state: None) -> Type["Working"]:
-	idle_run_mock(event, state)
+def card_in(event: CardIn, context: None) -> Type["Working"]:
+	idle_run_mock(event, context)
 	# type safe access to event attributes
 	print(event.id, event.timestamp)
 	return Working
 
 
 class Idle(Node[Event, None, None]):
-	_state: ClassVar[None] = None
-	
+	_context: ClassVar[None] = None
+
 	@staticmethod
-	def entry(state: None) -> tuple[Type["Idle"], None]:
-		idle_entry_mock(state)
+	def entry(context: None) -> tuple[Type["Idle"], None]:
+		idle_entry_mock(context)
 		return Idle, None
 
 	class EventHandlers:
@@ -62,16 +60,16 @@ class Idle(Node[Event, None, None]):
 		)
 
 	@staticmethod
-	def exit(state: None) -> None:
-		idle_exit_mock(state)
+	def exit(context: None) -> None:
+		idle_exit_mock(context)
 
 
 class Working(Node[Event, None, None]):
-	_state: ClassVar[None] = None
-	
+	_context: ClassVar[None] = None
+
 	@staticmethod
-	def entry(state: None) -> tuple[Type["Working"], None]:
-		working_entry_mock(state)
+	def entry(context: None) -> tuple[Type["Working"], None]:
+		working_entry_mock(context)
 		return Working, None
 
 	class EventHandlers:
@@ -80,16 +78,16 @@ class Working(Node[Event, None, None]):
 		)
 
 	@staticmethod
-	def exit(state: None) -> None:
-		working_exit_mock(state)
+	def exit(context: None) -> None:
+		working_exit_mock(context)
 
 
 class Broken(Node[Event, None, None]):
-	_state: ClassVar[None] = None
-	
+	_context: ClassVar[None] = None
+
 	@staticmethod
-	def entry(state: None) -> tuple[Type["Broken"], None]:
-		broken_entry_mock(state)
+	def entry(context: None) -> tuple[Type["Broken"], None]:
+		broken_entry_mock(context)
 		return Broken, None
 
 	class EventHandlers:
@@ -98,14 +96,14 @@ class Broken(Node[Event, None, None]):
 		)
 
 	@staticmethod
-	def exit(state: None) -> None:
-		broken_exit_mock(state)
+	def exit(context: None) -> None:
+		broken_exit_mock(context)
 
 
 def test_transitions_run() -> None:
 	node: Type[Node[Event, None, Any]] = Idle
 	node = hsm_handle_entries(node)  # type: ignore[assignment]
-	
+
 	# Reset mocks after initialization
 	idle_entry_mock.reset_mock()
 	idle_exit_mock.reset_mock()

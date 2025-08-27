@@ -7,9 +7,9 @@ from typing import Any, Callable, Final, NamedTuple, Type, TypeVar, _ProtocolMet
 from typing_extensions import TypeIs
 
 TEvent = TypeVar("TEvent")
-TState = TypeVar("TState")
+TContext = TypeVar("TContext")
 TNode = TypeVar("TNode")
-TEntryStates = TypeVar("TEntryStates", contravariant=True)
+TEntryContexts = TypeVar("TEntryContexts", contravariant=True)
 
 
 class NoTransition(NamedTuple): ...
@@ -71,7 +71,7 @@ class _NodeMeta(type, _NodeMixin):
 				tuple[
 					Type[TEvent],
 					Callable[
-						[TEvent, TState | None],
+						[TEvent, TContext | None],
 						type | HSMStatus,
 					],
 				]
@@ -86,7 +86,7 @@ class _NodeMeta(type, _NodeMixin):
 				)
 			)
 		node_cls._event_handlers = tuple(event_handlers)  # type: ignore[attr-defined]
-		node_cls._state = None
+		node_cls._context = None
 		del event_handlers
 
 		return node_cls

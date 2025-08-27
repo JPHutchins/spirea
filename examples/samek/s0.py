@@ -3,16 +3,16 @@
 
 
 from examples.samek.events import EventE
-from examples.samek.state import State
+from examples.samek.state import Context
 
 
-def entry(state: State) -> None:
+def entry(context: Context) -> None:
 	print("s0 entry")
 
 
-def run_e(event: EventE, state: State) -> None:
+def run_e(event: EventE, context: Context) -> None:
 	print("s0 run e")
 
 
-def exit(state: State) -> None:
+def exit(context: Context) -> None:
 	print("s0 exit")

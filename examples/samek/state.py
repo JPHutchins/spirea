@@ -5,5 +5,5 @@ from dataclasses import dataclass
 
 
 @dataclass
-class State:
+class Context:
 	foo: int

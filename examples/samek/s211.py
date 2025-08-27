@@ -2,20 +2,20 @@
 # SPDX-License-Identifier: MIT
 
 from examples.samek.events import EventD, EventG
-from examples.samek.state import State
+from examples.samek.state import Context
 
 
-def entry(state: State) -> None:
+def entry(context: Context) -> None:
 	print("            s211 entry")
 
 
-def run_d(event: EventD, state: State) -> None:
+def run_d(event: EventD, context: Context) -> None:
 	print("            s211 run d")
 
 
-def run_g(event: EventG, state: State) -> None:
+def run_g(event: EventG, context: Context) -> None:
 	print("            s211 run g")
 
 
-def exit(state: State) -> None:
+def exit(context: Context) -> None:
 	print("            s211 exit")

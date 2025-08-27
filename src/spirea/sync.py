@@ -9,9 +9,9 @@ from typing import Any, Callable, ClassVar, Final, Protocol, Type, assert_never
 from spirea._common import (
 	HSMStatus,
 	NodeMeta,
-	TEntryStates,
+	TContext,
+	TEntryContexts,
 	TEvent,
-	TState,
 	hsm_get_lca,
 	hsm_get_path_to_root,
 	is_hsm_status,
@@ -23,31 +23,31 @@ logger: Final = logging.getLogger(__name__)
 __all__ = ("HSMStatus",)  # re-exported from _common
 
 
-class Node(Protocol[TEvent, TState, TEntryStates], metaclass=NodeMeta):
+class Node(Protocol[TEvent, TContext, TEntryContexts], metaclass=NodeMeta):
 	"""The synchronous `Protocol` for a hierarchical state machine node."""
 
 	@staticmethod
-	def entry(state: TEntryStates) -> tuple[type["Node[TEvent, TState, Any]"], TState]: ...
+	def entry(context: TEntryContexts) -> tuple[type["Node[TEvent, TContext, Any]"], TContext]: ...
 
 	@staticmethod
-	def exit(state: TState) -> None: ...
+	def exit(context: TContext) -> None: ...
 
 	_event_handlers: tuple[
 		tuple[
 			Type[TEvent],
-			Callable[[TEvent, TState], Type["Node[TEvent, TState, Any]"] | HSMStatus],
+			Callable[[TEvent, TContext], Type["Node[TEvent, TContext, Any]"] | HSMStatus],
 		],
 		...,
 	] = ()
 	"""This is provided by the metaclass, here for type hinting only."""
 
-	_state: ClassVar[TState]
+	_context: ClassVar[TContext]
 
 
 def _hsm_get_event_handler(
-	node: Type[Node[TEvent, TState, Any]],
+	node: Type[Node[TEvent, TContext, Any]],
 	event: TEvent,
-) -> Callable[[TEvent, TState | None], Type[Node[TEvent, TState, Any]] | HSMStatus] | None:
+) -> Callable[[TEvent, TContext | None], Type[Node[TEvent, TContext, Any]] | HSMStatus] | None:
 	for eventT, handler in node._event_handlers:
 		if isinstance(event, eventT):
 			return handler
@@ -56,9 +56,9 @@ def _hsm_get_event_handler(
 
 
 def hsm_handle_entries(
-	node: Type[Node[TEvent, TState, Any]],
-	prev: Type[Node[TEvent, TState, Any]] | None = None,
-) -> Type[Node[TEvent, TState, Any]]:
+	node: Type[Node[TEvent, TContext, Any]],
+	prev: Type[Node[TEvent, TContext, Any]] | None = None,
+) -> Type[Node[TEvent, TContext, Any]]:
 	"""Do the entries for the given node and all transitions that its entry causes.
 
 	Args:
@@ -71,15 +71,15 @@ def hsm_handle_entries(
 
 	while node != prev:
 		prev = node
-		node, state = node.entry(node._state)
-		node._state = state
+		node, context = node.entry(node._context)
+		node._context = context
 	return node
 
 
 def hsm_handle_event(
-	node: Type[Node[TEvent, TState, Any]],
+	node: Type[Node[TEvent, TContext, Any]],
 	event: TEvent,
-) -> Type[Node[TEvent, TState, Any]]:
+) -> Type[Node[TEvent, TContext, Any]]:
 	"""
 	Handle an event for the hierarchical state machine.
 
@@ -93,12 +93,12 @@ def hsm_handle_event(
 	"""
 
 	# the node path from the starting node up to the handling node
-	node_path: Final[list[Type[Node[TEvent, TState, Any]]]] = [node]
+	node_path: Final[list[Type[Node[TEvent, TContext, Any]]]] = [node]
 
 	while True:
 		current_node = node_path[-1]
 		node_or_status: Final = (  # type: ignore[misc]
-			handler(event, current_node._state)
+			handler(event, current_node._context)
 			if (handler := _hsm_get_event_handler(current_node, event))
 			else HSMStatus.EVENT_UNHANDLED
 		)
@@ -113,7 +113,7 @@ def hsm_handle_event(
 			elif status == HSMStatus.SELF_TRANSITION:
 				logger.debug(f"Self-transition in state {current_node.__name__}")
 				for n in node_path:
-					n.exit(current_node._state)
+					n.exit(current_node._context)
 				return hsm_handle_entries(current_node)
 
 			elif status == HSMStatus.EVENT_UNHANDLED:
@@ -138,7 +138,7 @@ def hsm_handle_event(
 		# do the exits from the original node to the LCA
 		next_node = node
 		while next_node != lca:
-			next_node.exit(next_node._state)
+			next_node.exit(next_node._context)
 			if next_node._superstate is None:
 				break
 			next_node = next_node._superstate
@@ -159,8 +159,8 @@ def hsm_handle_event(
 			if entry_node != next_node:
 				logger.warning(f"The entry return disagrees with the path -> Path is {entry_path}")
 				raise ValueError("The entry return disagrees with the entry path")
-			next_node, next_state = entry_node.entry(current_node._state)
-			entry_node._state = next_state
+			next_node, next_context = entry_node.entry(current_node._context)
+			entry_node._context = next_context
 			current_node = entry_node
 
 		return hsm_handle_entries(next_node, entry_path[-1] if entry_path else None)
