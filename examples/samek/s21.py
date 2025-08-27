@@ -8,11 +8,11 @@ from examples.samek.state import State
 from spirea.sync import HSMStatus
 
 
-def entry(state: State | None = None) -> None:
+def entry(state: State) -> None:
 	print("        s21 entry")
 
 
-def run_b(event: EventB, state: State | None) -> None:
+def run_b(event: EventB, state: State) -> None:
 	print("        s21 run b")
 
 
@@ -26,5 +26,5 @@ def run_h(event: EventH, state: State) -> L[HSMStatus.SELF_TRANSITION] | L[HSMSt
 		return HSMStatus.NO_TRANSITION
 
 
-def exit(state: State | None) -> None:
+def exit(state: State) -> None:
 	print("        s21 exit")

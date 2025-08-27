@@ -6,11 +6,11 @@ from examples.samek.events import EventG
 from examples.samek.state import State
 
 
-def entry(state: State | None = None) -> None:
+def entry(state: State) -> None:
 	print("        s11 entry")
 
 
-def run_g(event: EventG, state: State | None) -> None:
+def run_g(event: EventG, state: State) -> None:
 	print("        s11 run g")
 
 

@@ -1,10 +1,10 @@
 # Copyright (c) 2025 JP Hutchins
 # SPDX-License-Identifier: MIT
 
-from typing import Callable, NamedTuple, Type
+from typing import Any, Callable, ClassVar, NamedTuple, Type
 from unittest.mock import Mock
 
-from spirea.sync import Node, hsm_handle_event
+from spirea.sync import Node, hsm_handle_entries, hsm_handle_event
 
 
 class CardIn(NamedTuple):
@@ -24,8 +24,6 @@ class Fixed(NamedTuple): ...
 type Event = CardIn | Done | Broke | Fixed
 
 
-class State(NamedTuple):
-	pass
 
 
 # Declare mocks at file scope
@@ -42,64 +40,79 @@ broken_run_mock = Mock()
 broken_exit_mock = Mock()
 
 
-def card_in(event: CardIn, state: State | None) -> Type["Working"]:
+def card_in(event: CardIn, state: None) -> Type["Working"]:
 	idle_run_mock(event, state)
 	# type safe access to event attributes
 	print(event.id, event.timestamp)
 	return Working
 
 
-class Idle(Node[Event, State]):
+class Idle(Node[Event, None, None]):
+	_state: ClassVar[None] = None
+	
 	@staticmethod
-	def entry(state: State | None = None) -> Type[Node[Event, State]]:
+	def entry(state: None) -> tuple[Type["Idle"], None]:
 		idle_entry_mock(state)
-		return Idle
+		return Idle, None
 
 	class EventHandlers:
-		card_in: Callable[[CardIn, State | None], Type["Working"]] = card_in
-		broken: Callable[[Broke, State | None], Type["Broken"]] = (
+		card_in: Callable[[CardIn, None], Type["Working"]] = card_in
+		broken: Callable[[Broke, None], Type["Broken"]] = (
 			lambda e, s: (idle_run_mock(e, s) and None) or Broken
 		)
 
 	@staticmethod
-	def exit(state: State | None = None) -> None:
+	def exit(state: None) -> None:
 		idle_exit_mock(state)
 
 
-class Working(Node[Event, State]):
+class Working(Node[Event, None, None]):
+	_state: ClassVar[None] = None
+	
 	@staticmethod
-	def entry(state: State | None = None) -> Type[Node[Event, State]]:
+	def entry(state: None) -> tuple[Type["Working"], None]:
 		working_entry_mock(state)
-		return Working
+		return Working, None
 
 	class EventHandlers:
-		DONE: Callable[[Done, State | None], Type[Idle]] = (
+		DONE: Callable[[Done, None], Type[Idle]] = (
 			lambda e, s: (working_run_mock(e, s) and None) or Idle
 		)
 
 	@staticmethod
-	def exit(state: State | None = None) -> None:
+	def exit(state: None) -> None:
 		working_exit_mock(state)
 
 
-class Broken(Node[Event, State]):
+class Broken(Node[Event, None, None]):
+	_state: ClassVar[None] = None
+	
 	@staticmethod
-	def entry(state: State | None = None) -> Type[Node[Event, State]]:
+	def entry(state: None) -> tuple[Type["Broken"], None]:
 		broken_entry_mock(state)
-		return Broken
+		return Broken, None
 
 	class EventHandlers:
-		FIXED: Callable[[Fixed, State | None], Type[Idle]] = (
+		FIXED: Callable[[Fixed, None], Type[Idle]] = (
 			lambda e, s: (broken_run_mock(e, s) and None) or Idle
 		)
 
 	@staticmethod
-	def exit(state: State | None = None) -> None:
+	def exit(state: None) -> None:
 		broken_exit_mock(state)
 
 
 def test_transitions_run() -> None:
-	node: Type[Node[Event, State]] = Idle
+	node: Type[Node[Event, None, Any]] = Idle
+	node = hsm_handle_entries(node)  # type: ignore[assignment]
+	
+	# Reset mocks after initialization
+	idle_entry_mock.reset_mock()
+	idle_exit_mock.reset_mock()
+	working_entry_mock.reset_mock()
+	working_exit_mock.reset_mock()
+	broken_entry_mock.reset_mock()
+	broken_exit_mock.reset_mock()
 
 	# test the unhandled events
 	node = hsm_handle_event(node, Done())

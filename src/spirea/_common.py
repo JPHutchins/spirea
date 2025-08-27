@@ -9,6 +9,7 @@ from typing_extensions import TypeIs
 TEvent = TypeVar("TEvent")
 TState = TypeVar("TState")
 TNode = TypeVar("TNode")
+TEntryStates = TypeVar("TEntryStates", contravariant=True)
 
 
 class NoTransition(NamedTuple): ...
@@ -85,6 +86,7 @@ class _NodeMeta(type, _NodeMixin):
 				)
 			)
 		node_cls._event_handlers = tuple(event_handlers)  # type: ignore[attr-defined]
+		node_cls._state = None
 		del event_handlers
 
 		return node_cls
@@ -113,4 +115,7 @@ def hsm_get_lca(
 		if node in path2:
 			return node
 
+	return None
+	return None
+	return None
 	return None

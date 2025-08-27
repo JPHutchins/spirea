@@ -4,11 +4,12 @@
 """Hierarchical State Machine (HSM) API for asynchronous runtime."""
 
 import logging
-from typing import Awaitable, Callable, Final, Protocol, Type, assert_never
+from typing import Any, Awaitable, Callable, ClassVar, Final, Protocol, Type, assert_never
 
 from spirea._common import (
 	HSMStatus,
 	NodeMeta,
+	TEntryStates,
 	TEvent,
 	TState,
 	hsm_get_lca,
@@ -22,32 +23,34 @@ logger: Final = logging.getLogger(__name__)
 __all__ = ("HSMStatus",)  # re-exported from _common
 
 
-class Node(Protocol[TEvent, TState], metaclass=NodeMeta):
+class Node(Protocol[TEvent, TState, TEntryStates], metaclass=NodeMeta):
 	"""The asynchronous `Protocol` for a hierarchical state machine node."""
 
 	@staticmethod
-	async def entry(state: TState | None = None) -> Type["Node[TEvent, TState]"]: ...
+	async def entry(state: TEntryStates) -> tuple[type["Node[TEvent, TState, Any]"], TState]: ...
 
 	@staticmethod
-	async def exit(state: TState | None = None) -> None: ...
+	async def exit(state: TState) -> None: ...
 
 	_event_handlers: tuple[
 		tuple[
 			Type[TEvent],
 			Callable[
-				[TEvent, TState | None],
-				Awaitable[Type["Node[TEvent, TState]"] | HSMStatus],
+				[TEvent, TState],
+				Awaitable[Type["Node[TEvent, TState, Any]"] | HSMStatus],
 			],
 		],
 		...,
 	] = ()
 	"""This is provided by the metaclass, here for type hinting only."""
 
+	_state: ClassVar[TState]
+
 
 def _hsm_get_event_handler(
-	node: Type[Node[TEvent, TState]],
+	node: Type[Node[TEvent, TState, Any]],
 	event: TEvent,
-) -> Callable[[TEvent, TState | None], Awaitable[Type[Node[TEvent, TState]] | HSMStatus]] | None:
+) -> Callable[[TEvent, TState | None], Awaitable[Type[Node[TEvent, TState, Any]] | HSMStatus]] | None:
 	for eventT, handler in node._event_handlers:
 		if isinstance(event, eventT):
 			return handler
@@ -56,15 +59,13 @@ def _hsm_get_event_handler(
 
 
 async def hsm_handle_entries(
-	node: Type[Node[TEvent, TState]],
-	state: TState | None = None,
-	prev: Type[Node[TEvent, TState]] | None = None,
-) -> Type[Node[TEvent, TState]]:
+	node: Type[Node[TEvent, TState, Any]],
+	prev: Type[Node[TEvent, TState, Any]] | None = None,
+) -> Type[Node[TEvent, TState, Any]]:
 	"""Do the entries for the given node and all transitions that its entry causes.
 
 	Args:
 		node (Type[Node]): The node to start the entries from.
-		state (TState): The state to pass to the entry functions.
 		prev (Type[Node], optional): The previous node. Defaults to None.
 
 	Returns:
@@ -73,34 +74,33 @@ async def hsm_handle_entries(
 
 	while node != prev:
 		prev = node
-		node = await node.entry(state)
+		node, state = await node.entry(node._state)
+		node._state = state
 	return node
 
 
 async def hsm_handle_event(
-	node: Type[Node[TEvent, TState]],
+	node: Type[Node[TEvent, TState, Any]],
 	event: TEvent,
-	state: TState | None = None,
-) -> Type[Node[TEvent, TState]]:
+) -> Type[Node[TEvent, TState, Any]]:
 	"""
 	Handle an event for the hierarchical state machine.
 
 	Args:
-		node (Type[Node[TEvent, TState]]): The current node of the HSM.
+		node (Type[Node[TEvent, TState, Any]]): The current node of the HSM.
 		event (TEvent): The event to handle.
-		state (TState, optional): The state to pass to the event handlers. Defaults to None.
 
 	Returns:
-		node (Type[Node[TEvent, TState]]): The new node after handling the event.
+		node (Type[Node[TEvent, TState, Any]]): The new node after handling the event.
 	"""
 
 	# the node path from the starting node up to the handling node
-	node_path: Final[list[Type[Node[TEvent, TState]]]] = [node]
+	node_path: Final[list[Type[Node[TEvent, TState, Any]]]] = [node]
 
 	while True:
-		current_node: Final = node_path[-1]  # type: ignore[misc]
+		current_node = node_path[-1]
 		node_or_status: Final = (  # type: ignore[misc]
-			await handler(event, state)
+			await handler(event, current_node._state)
 			if (handler := _hsm_get_event_handler(current_node, event))
 			else HSMStatus.EVENT_UNHANDLED
 		)
@@ -115,8 +115,8 @@ async def hsm_handle_event(
 			elif status == HSMStatus.SELF_TRANSITION:
 				logger.debug(f"Self-transition in state {current_node.__name__}")
 				for n in node_path:
-					await n.exit(state)
-				return await hsm_handle_entries(current_node, state)
+					await n.exit(current_node._state)
+				return await hsm_handle_entries(current_node)
 
 			elif status == HSMStatus.EVENT_UNHANDLED:
 				logger.debug(f"Unhandled event {event} in state {current_node.__name__}")
@@ -140,7 +140,7 @@ async def hsm_handle_event(
 		# do the exits from the original node to the LCA
 		next_node = node
 		while next_node != lca:
-			await next_node.exit(state)
+			await next_node.exit(next_node._state)
 			if next_node._superstate is None:
 				break
 			next_node = next_node._superstate
@@ -161,6 +161,8 @@ async def hsm_handle_event(
 			if entry_node != next_node:
 				logger.warning(f"The entry return disagrees with the path -> Path is {entry_path}")
 				raise ValueError("The entry return disagrees with the entry path")
-			next_node = await entry_node.entry(state)
+			next_node, next_state = await entry_node.entry(current_node._state)
+			entry_node._state = next_state
+			current_node = entry_node
 
-		return await hsm_handle_entries(next_node, state, entry_path[-1] if entry_path else None)
+		return await hsm_handle_entries(next_node, entry_path[-1] if entry_path else None)

@@ -6,13 +6,13 @@ from examples.samek.events import EventE
 from examples.samek.state import State
 
 
-def entry(state: State | None = None) -> None:
+def entry(state: State) -> None:
 	print("s0 entry")
 
 
-def run_e(event: EventE, state: State | None) -> None:
+def run_e(event: EventE, state: State) -> None:
 	print("s0 run e")
 
 
-def exit(state: State | None) -> None:
+def exit(state: State) -> None:
 	print("s0 exit")
