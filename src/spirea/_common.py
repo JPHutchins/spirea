@@ -40,6 +40,7 @@ def _is_hsm_node(cls: Any) -> TypeIs[Type["NodeMeta"]]:
 class _NodeMixin:
 	_superstate: type | None
 	_substates: tuple[type, ...]
+	_context: Any
 
 
 class _NodeMeta(type, _NodeMixin):
@@ -115,7 +116,4 @@ def hsm_get_lca(
 		if node in path2:
 			return node
 
-	return None
-	return None
-	return None
 	return None

@@ -46,16 +46,13 @@ class Node(Protocol[TEvent, TContext, TEntryContexts], metaclass=NodeMeta):
 	] = ()
 	"""This is provided by the metaclass, here for type hinting only."""
 
-	_context: ClassVar[TContext]
+	_context: ClassVar[Any]
 
 
 def _hsm_get_event_handler(
 	node: Type[Node[TEvent, TContext, Any]],
 	event: TEvent,
-) -> (
-	Callable[[TEvent, TContext | None], Awaitable[Type[Node[TEvent, TContext, Any]] | HSMStatus]]
-	| None
-):
+) -> Callable[[TEvent, TContext], Awaitable[Type[Node[TEvent, TContext, Any]] | HSMStatus]] | None:
 	for eventT, handler in node._event_handlers:
 		if isinstance(event, eventT):
 			return handler

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from dataclasses import dataclass  # noqa: I001
-from typing import Any, Awaitable as A, ClassVar
+from typing import Awaitable as A, ClassVar
 from typing import Callable
 from typing import Literal as L
 from typing import NamedTuple, Type

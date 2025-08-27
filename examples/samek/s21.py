@@ -16,7 +16,9 @@ def run_b(event: EventB, context: Context) -> None:
 	print("        s21 run b")
 
 
-def run_h(event: EventH, context: Context) -> L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION]:
+def run_h(
+	event: EventH, context: Context
+) -> L[HSMStatus.SELF_TRANSITION] | L[HSMStatus.NO_TRANSITION]:
 	if context.foo == 0:
 		context.foo = 1
 		print(f"        s21 run h {context.foo=}")
